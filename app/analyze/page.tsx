@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { FileUpload } from '@/components/FileUpload';
 import { DataProfiler } from '@/components/DataProfiler';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
+import { VariableSelector, AISettings } from '@/components/VariableSelector';
 import { profileData, DataProfile } from '@/lib/data-profiler';
 import { runCronbachAlpha, runCorrelation, runDescriptiveStats } from '@/lib/webr-wrapper';
 import { BarChart3, Brain, FileText } from 'lucide-react';
 
-type AnalysisStep = 'upload' | 'profile' | 'analyze' | 'results';
+type AnalysisStep = 'upload' | 'profile' | 'analyze' | 'cronbach-select' | 'results';
 
 export default function AnalyzePage() {
     const [step, setStep] = useState<AnalysisStep>('upload');
@@ -18,6 +19,7 @@ export default function AnalyzePage() {
     const [analysisType, setAnalysisType] = useState<string>('');
     const [results, setResults] = useState<any>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [scaleName, setScaleName] = useState('');
 
     const handleDataLoaded = (loadedData: any[], fname: string) => {
         setData(loadedData);
@@ -31,16 +33,48 @@ export default function AnalyzePage() {
         setStep('analyze');
     };
 
+    // Get numeric columns from profile
+    const getNumericColumns = () => {
+        if (!profile) return [];
+        return Object.entries(profile.columnStats)
+            .filter(([_, stats]) => stats.type === 'numeric')
+            .map(([name, _]) => name);
+    };
+
+    // Run Cronbach with selected variables (scientific approach - per construct)
+    const runCronbachWithSelection = async (selectedColumns: string[], name: string) => {
+        setIsAnalyzing(true);
+        setAnalysisType('cronbach');
+        setScaleName(name);
+
+        try {
+            const selectedData = data.map(row =>
+                selectedColumns.map(col => Number(row[col]) || 0)
+            );
+
+            const analysisResults = await runCronbachAlpha(selectedData);
+
+            setResults({
+                type: 'cronbach',
+                data: analysisResults,
+                columns: selectedColumns,
+                scaleName: name
+            });
+            setStep('results');
+        } catch (error) {
+            console.error('Analysis error:', error);
+            alert(`Lỗi phân tích: ${error}`);
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
     const runAnalysis = async (type: string) => {
         setIsAnalyzing(true);
         setAnalysisType(type);
 
         try {
-            // Extract numeric columns only
-            const numericColumns = Object.entries(profile!.columnStats)
-                .filter(([_, stats]) => stats.type === 'numeric')
-                .map(([name, _]) => name);
-
+            const numericColumns = getNumericColumns();
             const numericData = data.map(row =>
                 numericColumns.map(col => Number(row[col]) || 0)
             );
@@ -48,9 +82,6 @@ export default function AnalyzePage() {
             let analysisResults;
 
             switch (type) {
-                case 'cronbach':
-                    analysisResults = await runCronbachAlpha(numericData);
-                    break;
                 case 'correlation':
                     analysisResults = await runCorrelation(numericData);
                     break;
@@ -88,12 +119,15 @@ export default function AnalyzePage() {
                                 <p className="text-sm text-gray-500">Phân tích thống kê cho NCS Việt Nam</p>
                             </div>
                         </div>
-                        {filename && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <FileText className="w-4 h-4" />
-                                <span>{filename}</span>
-                            </div>
-                        )}
+                        <div className="flex items-center gap-4">
+                            {filename && (
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <FileText className="w-4 h-4" />
+                                    <span>{filename}</span>
+                                </div>
+                            )}
+                            <AISettings />
+                        </div>
                     </div>
                 </div>
             </header>
@@ -178,15 +212,15 @@ export default function AnalyzePage() {
                                 </button>
 
                                 <button
-                                    onClick={() => runAnalysis('cronbach')}
+                                    onClick={() => setStep('cronbach-select')}
                                     disabled={isAnalyzing}
                                     className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all border-2 border-transparent hover:border-blue-500 text-left disabled:opacity-50"
                                 >
                                     <h3 className="text-xl font-bold text-gray-800 mb-2">
-                                        Cronbach's Alpha
+                                        Cronbach&apos;s Alpha
                                     </h3>
                                     <p className="text-gray-600 text-sm">
-                                        Kiểm tra độ tin cậy thang đo
+                                        Kiểm tra độ tin cậy thang đo (chọn nhóm biến)
                                     </p>
                                 </button>
 
@@ -225,6 +259,39 @@ export default function AnalyzePage() {
                         </div>
                     )}
 
+                    {step === 'cronbach-select' && (
+                        <div className="max-w-2xl mx-auto space-y-6">
+                            <div className="text-center mb-8">
+                                <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                                    Cronbach&apos;s Alpha
+                                </h2>
+                                <p className="text-gray-600">
+                                    Chọn các biến thuộc cùng một thang đo (construct)
+                                </p>
+                            </div>
+
+                            <VariableSelector
+                                columns={getNumericColumns()}
+                                onAnalyze={runCronbachWithSelection}
+                                isAnalyzing={isAnalyzing}
+                            />
+
+                            <button
+                                onClick={() => setStep('analyze')}
+                                className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+                            >
+                                ← Quay lại chọn phương pháp
+                            </button>
+
+                            {isAnalyzing && (
+                                <div className="text-center py-8">
+                                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                                    <p className="mt-4 text-gray-600">Đang phân tích...</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {step === 'results' && results && (
                         <div className="max-w-6xl mx-auto space-y-6" id="results-container">
                             <div className="text-center mb-8">
@@ -232,7 +299,7 @@ export default function AnalyzePage() {
                                     Kết quả phân tích
                                 </h2>
                                 <p className="text-gray-600">
-                                    {analysisType === 'cronbach' && "Cronbach's Alpha"}
+                                    {analysisType === 'cronbach' && `Cronbach's Alpha${results.scaleName ? ` - ${results.scaleName}` : ''}`}
                                     {analysisType === 'correlation' && "Ma trận tương quan"}
                                     {analysisType === 'descriptive' && "Thống kê mô tả"}
                                 </p>

@@ -47,7 +47,7 @@ Viết bằng tiếng Việt, ngắn gọn, chính xác.
         const explanation = data.candidates[0].content.parts[0].text;
 
         // Parse the structured response
-        const sections = explanation.split('##').filter(s => s.trim());
+        const sections = explanation.split('##').filter((s: string) => s.trim());
 
         return NextResponse.json({
             explanation,

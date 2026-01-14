@@ -32,7 +32,7 @@ interface ResultsDisplayProps {
 
 export function ResultsDisplay({ analysisType, results, columns }: ResultsDisplayProps) {
     if (analysisType === 'cronbach') {
-        return <CronbachResults results={results} />;
+        return <CronbachResults results={results} columns={columns} />;
     }
 
     if (analysisType === 'correlation') {
@@ -46,10 +46,10 @@ export function ResultsDisplay({ analysisType, results, columns }: ResultsDispla
     return null;
 }
 
-function CronbachResults({ results }: { results: any }) {
+function CronbachResults({ results, columns }: { results: any; columns?: string[] }) {
     const alpha = results.alpha || results.rawAlpha || 0;
-    // Use N of Items if available, otherwise fallback (we normally get this from raw data columns count if not in result)
     const nItems = results.nItems || 'N/A';
+    const itemTotalStats = results.itemTotalStats || [];
 
     // SPSS Style Table Component
     const SPSSTable = ({ title, children }: { title: string, children: React.ReactNode }) => (
@@ -69,7 +69,7 @@ function CronbachResults({ results }: { results: any }) {
                 <table className="w-full text-left text-sm">
                     <thead>
                         <tr className="border-b border-gray-400">
-                            <th className="py-2 pr-4 font-semibold">Cronbach's Alpha</th>
+                            <th className="py-2 pr-4 font-semibold">Cronbach&apos;s Alpha</th>
                             <th className="py-2 pr-4 font-semibold">N of Items</th>
                         </tr>
                     </thead>
@@ -82,9 +82,47 @@ function CronbachResults({ results }: { results: any }) {
                 </table>
             </SPSSTable>
 
-            {/* Interpretation Section (Kept for user friendliness, but styled cleaner) */}
+            {/* Item-Total Statistics Table - SPSS Style */}
+            {itemTotalStats.length > 0 && (
+                <SPSSTable title="Item-Total Statistics">
+                    <table className="w-full text-left text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-400">
+                                <th className="py-2 px-3 font-semibold"></th>
+                                <th className="py-2 px-3 font-semibold text-right">Scale Mean if Item Deleted</th>
+                                <th className="py-2 px-3 font-semibold text-right">Scale Variance if Item Deleted</th>
+                                <th className="py-2 px-3 font-semibold text-right">Corrected Item-Total Correlation</th>
+                                <th className="py-2 px-3 font-semibold text-right">Cronbach&apos;s Alpha if Item Deleted</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {itemTotalStats.map((item: any, idx: number) => (
+                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="py-2 px-3 font-medium">
+                                        {columns?.[idx] || item.itemName}
+                                    </td>
+                                    <td className="py-2 px-3 text-right">{item.scaleMeanIfDeleted?.toFixed(3) || '-'}</td>
+                                    <td className="py-2 px-3 text-right">{item.scaleVarianceIfDeleted?.toFixed(3) || '-'}</td>
+                                    <td className={`py-2 px-3 text-right ${item.correctedItemTotalCorrelation < 0.3 ? 'text-red-600 font-bold' : ''}`}>
+                                        {item.correctedItemTotalCorrelation?.toFixed(3) || '-'}
+                                    </td>
+                                    <td className={`py-2 px-3 text-right ${item.alphaIfItemDeleted > alpha ? 'text-orange-600 font-bold' : ''}`}>
+                                        {item.alphaIfItemDeleted?.toFixed(3) || '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <p className="text-xs text-gray-500 italic p-2">
+                        * Corrected Item-Total Correlation &lt; 0.3 được đánh dấu đỏ (cần xem xét loại bỏ).
+                        Alpha if Item Deleted &gt; Alpha hiện tại được đánh dấu cam (loại bỏ có thể cải thiện độ tin cậy).
+                    </p>
+                </SPSSTable>
+            )}
+
+            {/* Interpretation Section */}
             <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
-                <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Đánh Giáp & Khuyến Nghị</h4>
+                <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Đánh Giá &amp; Khuyến Nghị</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
                         <div className="text-sm font-medium mb-2 text-gray-600">Độ tin cậy thang đo:</div>
