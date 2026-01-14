@@ -49,8 +49,12 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
     pdf.setFont('helvetica', 'normal');
     const analysisTypeMap: Record<string, string> = {
         'cronbach': "Cronbach's Alpha",
+        'cronbach-batch': "Cronbach's Alpha (Batch)",
         'correlation': 'Ma Trận Tương Quan',
         'descriptive': 'Thống Kê Mô Tả',
+        'ttest': 'Independent Samples T-test',
+        'anova': 'One-Way ANOVA',
+        'efa': 'Exploratory Factor Analysis',
     };
     pdf.text(`Phương pháp: ${analysisTypeMap[analysisType] || analysisType}`, 20, yPosition);
     yPosition += 15;
@@ -93,6 +97,132 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
         const splitRecommendation = pdf.splitTextToSize(recommendation, pageWidth - 40);
         pdf.text(splitRecommendation, 30, yPosition);
 
+    } else if (analysisType === 'ttest') {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Independent Samples T-test:', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+
+        const rows = [
+            [`Biến so sánh: ${columns.join(' vs ')}`],
+            [`Trung bình nhóm 1: ${results.mean1?.toFixed(3) || 'N/A'}`],
+            [`Trung bình nhóm 2: ${results.mean2?.toFixed(3) || 'N/A'}`],
+            [`Chênh lệch trung bình: ${results.meanDiff?.toFixed(3) || 'N/A'}`],
+            [`Giá trị t: ${results.t?.toFixed(3) || 'N/A'}`],
+            [`Bậc tự do (df): ${results.df?.toFixed(2) || 'N/A'}`],
+            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
+            [`95% CI: [${results.ci95Lower?.toFixed(3) || 'N/A'}, ${results.ci95Upper?.toFixed(3) || 'N/A'}]`],
+            [`Cohen's d: ${results.effectSize?.toFixed(3) || 'N/A'}`],
+        ];
+
+        rows.forEach(row => {
+            pdf.text(row[0], 30, yPosition);
+            yPosition += 7;
+        });
+
+        yPosition += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Kết luận:', 20, yPosition);
+        yPosition += 8;
+        pdf.setFont('helvetica', 'normal');
+
+        const pValue = results.pValue || 1;
+        const conclusion = pValue < 0.05
+            ? 'Có sự khác biệt có ý nghĩa thống kê giữa hai nhóm (p < 0.05).'
+            : 'Không có sự khác biệt có ý nghĩa thống kê giữa hai nhóm (p >= 0.05).';
+        pdf.text(conclusion, 30, yPosition);
+
+    } else if (analysisType === 'ttest-paired') {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Paired Samples T-test:', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+
+        const rows = [
+            [`Biến so sánh: ${columns.join(' vs ')}`],
+            [`Trung bình trước: ${results.meanBefore?.toFixed(3) || 'N/A'}`],
+            [`Trung bình sau: ${results.meanAfter?.toFixed(3) || 'N/A'}`],
+            [`Chênh lệch trung bình: ${results.meanDiff?.toFixed(3) || 'N/A'}`],
+            [`Giá trị t: ${results.t?.toFixed(3) || 'N/A'}`],
+            [`Bậc tự do (df): ${results.df?.toFixed(0) || 'N/A'}`],
+            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
+            [`95% CI: [${results.ci95Lower?.toFixed(3) || 'N/A'}, ${results.ci95Upper?.toFixed(3) || 'N/A'}]`],
+        ];
+
+        rows.forEach(row => {
+            pdf.text(row[0], 30, yPosition);
+            yPosition += 7;
+        });
+
+        yPosition += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Kết luận:', 20, yPosition);
+        yPosition += 8;
+        pdf.setFont('helvetica', 'normal');
+
+        const pValue = results.pValue || 1;
+        const conclusion = pValue < 0.05
+            ? 'Có sự thay đổi có ý nghĩa thống kê giữa trước và sau (p < 0.05).'
+            : 'Không có sự thay đổi có ý nghĩa thống kê (p >= 0.05).';
+        pdf.text(conclusion, 30, yPosition);
+
+    } else if (analysisType === 'anova') {
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('One-Way ANOVA:', 20, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+
+        const rows = [
+            [`Số nhóm: ${columns.length}`],
+            [`Biến: ${columns.join(', ')}`],
+            [`F-statistic: ${results.F?.toFixed(3) || 'N/A'}`],
+            [`df Between: ${results.dfBetween?.toFixed(0) || 'N/A'}`],
+            [`df Within: ${results.dfWithin?.toFixed(0) || 'N/A'}`],
+            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
+            [`Eta-squared: ${results.etaSquared?.toFixed(3) || 'N/A'}`],
+            [`Grand Mean: ${results.grandMean?.toFixed(3) || 'N/A'}`],
+        ];
+
+        rows.forEach(row => {
+            pdf.text(row[0], 30, yPosition);
+            yPosition += 7;
+        });
+
+        // Group means
+        if (results.groupMeans && results.groupMeans.length > 0) {
+            yPosition += 3;
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Trung bình từng nhóm:', 20, yPosition);
+            yPosition += 7;
+            pdf.setFont('helvetica', 'normal');
+
+            results.groupMeans.forEach((mean: number, idx: number) => {
+                pdf.text(`  ${columns[idx]}: ${mean.toFixed(3)}`, 30, yPosition);
+                yPosition += 6;
+            });
+        }
+
+        yPosition += 5;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Kết luận:', 20, yPosition);
+        yPosition += 8;
+        pdf.setFont('helvetica', 'normal');
+
+        const pValue = results.pValue || 1;
+        const conclusion = pValue < 0.05
+            ? 'Có sự khác biệt có ý nghĩa thống kê giữa các nhóm (p < 0.05).'
+            : 'Không có sự khác biệt có ý nghĩa thống kê giữa các nhóm (p >= 0.05).';
+        pdf.text(conclusion, 30, yPosition);
+
     } else if (analysisType === 'descriptive') {
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
@@ -118,11 +248,11 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
             }
 
             pdf.text(col.substring(0, 20), 20, yPosition);
-            pdf.text(results.mean[idx].toFixed(2), 70, yPosition);
-            pdf.text(results.sd[idx].toFixed(2), 100, yPosition);
-            pdf.text(results.min[idx].toFixed(2), 125, yPosition);
-            pdf.text(results.max[idx].toFixed(2), 150, yPosition);
-            pdf.text(results.median[idx].toFixed(2), 175, yPosition);
+            pdf.text(results.mean[idx]?.toFixed(2) || '-', 70, yPosition);
+            pdf.text(results.sd[idx]?.toFixed(2) || '-', 100, yPosition);
+            pdf.text(results.min[idx]?.toFixed(2) || '-', 125, yPosition);
+            pdf.text(results.max[idx]?.toFixed(2) || '-', 150, yPosition);
+            pdf.text(results.median[idx]?.toFixed(2) || '-', 175, yPosition);
             yPosition += 6;
         });
 

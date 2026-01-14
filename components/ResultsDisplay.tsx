@@ -47,8 +47,16 @@ export function ResultsDisplay({ analysisType, results, columns }: ResultsDispla
         return <TTestResults results={results} columns={columns} />;
     }
 
+    if (analysisType === 'ttest-paired') {
+        return <PairedTTestResults results={results} columns={columns} />;
+    }
+
     if (analysisType === 'anova') {
         return <ANOVAResults results={results} columns={columns} />;
+    }
+
+    if (analysisType === 'efa') {
+        return <EFAResults results={results} columns={columns} />;
     }
 
     return null;
@@ -392,6 +400,189 @@ function DescriptiveResults({ results, columns }: { results: any; columns: strin
                         }
                     }}
                 />
+            </div>
+        </div>
+    );
+}
+
+// Paired T-test Results Component
+function PairedTTestResults({ results, columns }: { results: any; columns: string[] }) {
+    const pValue = results.pValue;
+    const significant = pValue < 0.05;
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white border-t-2 border-b-2 border-black p-4">
+                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Paired Samples T-test Results</h4>
+                <table className="w-full text-sm">
+                    <tbody>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">Before ({columns[0]})</td>
+                            <td className="py-2 text-right">Mean = {results.meanBefore?.toFixed(3)}</td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">After ({columns[1]})</td>
+                            <td className="py-2 text-right">Mean = {results.meanAfter?.toFixed(3)}</td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">Mean Difference (Before - After)</td>
+                            <td className="py-2 text-right font-bold">{results.meanDiff?.toFixed(3)}</td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">t-statistic</td>
+                            <td className="py-2 text-right">{results.t?.toFixed(3)}</td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">Degrees of Freedom (df)</td>
+                            <td className="py-2 text-right">{results.df?.toFixed(0)}</td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">p-value (2-tailed)</td>
+                            <td className={`py-2 text-right font-bold ${significant ? 'text-green-600' : 'text-gray-600'}`}>
+                                {pValue?.toFixed(4)} {significant && '***'}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td className="py-2 font-medium">95% CI</td>
+                            <td className="py-2 text-right">[{results.ci95Lower?.toFixed(3)}, {results.ci95Upper?.toFixed(3)}]</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
+                <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Kết luận</h4>
+                <p className="text-sm text-gray-800">
+                    {significant
+                        ? `Có sự thay đổi có ý nghĩa thống kê giữa trước (${columns[0]}) và sau (${columns[1]}) (p = ${pValue?.toFixed(4)} < 0.05). Trung bình thay đổi ${results.meanDiff > 0 ? 'giảm' : 'tăng'} ${Math.abs(results.meanDiff)?.toFixed(3)} đơn vị.`
+                        : `Không có sự thay đổi có ý nghĩa thống kê giữa trước và sau (p = ${pValue?.toFixed(4)} >= 0.05).`
+                    }
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// EFA Results Component
+function EFAResults({ results, columns }: { results: any; columns: string[] }) {
+    const kmo = results.kmo || 0;
+    const bartlettP = results.bartlettP || 1;
+    const kmoAcceptable = kmo >= 0.6;
+    const bartlettSignificant = bartlettP < 0.05;
+
+    return (
+        <div className="space-y-6">
+            {/* KMO and Bartlett's Test */}
+            <div className="bg-white border-t-2 border-b-2 border-black p-4">
+                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">KMO and Bartlett&apos;s Test</h4>
+                <table className="w-full text-sm">
+                    <tbody>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">Kaiser-Meyer-Olkin Measure of Sampling Adequacy</td>
+                            <td className={`py-2 text-right font-bold ${kmoAcceptable ? 'text-green-600' : 'text-red-600'}`}>
+                                {kmo.toFixed(3)}
+                            </td>
+                        </tr>
+                        <tr className="border-b border-gray-200">
+                            <td className="py-2 font-medium">Bartlett&apos;s Test of Sphericity (Sig.)</td>
+                            <td className={`py-2 text-right font-bold ${bartlettSignificant ? 'text-green-600' : 'text-red-600'}`}>
+                                {bartlettP < 0.001 ? '< .001' : bartlettP.toFixed(4)} {bartlettSignificant && '***'}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Loadings Matrix */}
+            {results.loadings && (
+                <div className="bg-white border-t-2 border-b-2 border-black p-4">
+                    <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Factor Loadings (Rotated)</h4>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-400">
+                                    <th className="py-2 px-3 text-left font-semibold">Variable</th>
+                                    {Array.isArray(results.loadings[0]) && results.loadings[0].map((_: any, idx: number) => (
+                                        <th key={idx} className="py-2 px-3 text-right font-semibold">Factor {idx + 1}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {columns.map((col, rowIdx) => (
+                                    <tr key={rowIdx} className="border-b border-gray-200 hover:bg-gray-50">
+                                        <td className="py-2 px-3 font-medium">{col}</td>
+                                        {Array.isArray(results.loadings[rowIdx]) && results.loadings[rowIdx].map((val: number, colIdx: number) => (
+                                            <td
+                                                key={colIdx}
+                                                className={`py-2 px-3 text-right ${Math.abs(val) >= 0.5 ? 'font-bold text-blue-700' : Math.abs(val) >= 0.3 ? 'text-gray-700' : 'text-gray-400'}`}
+                                            >
+                                                {val?.toFixed(3) || '-'}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-xs text-gray-500 italic mt-2">
+                            * Factor loadings ≥ 0.5 được tô đậm. Loadings ≥ 0.3 được giữ lại.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Communalities */}
+            {results.communalities && (
+                <div className="bg-white border-t-2 border-b-2 border-black p-4">
+                    <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Communalities</h4>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-400">
+                                <th className="py-2 px-3 text-left font-semibold">Variable</th>
+                                <th className="py-2 px-3 text-right font-semibold">Extraction</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {columns.map((col, idx) => (
+                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
+                                    <td className="py-2 px-3 font-medium">{col}</td>
+                                    <td className={`py-2 px-3 text-right ${results.communalities[idx] < 0.4 ? 'text-red-600' : ''}`}>
+                                        {results.communalities[idx]?.toFixed(3) || '-'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    <p className="text-xs text-gray-500 italic mt-2">
+                        * Communality &lt; 0.4 được đánh dấu đỏ (biến giải thích kém).
+                    </p>
+                </div>
+            )}
+
+            {/* Interpretation */}
+            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
+                <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Đánh giá & Khuyến nghị</h4>
+                <div className="space-y-3 text-sm text-gray-800">
+                    <p>
+                        <strong>KMO = {kmo.toFixed(3)}:</strong>{' '}
+                        {kmo >= 0.9 ? 'Tuyệt vời' : kmo >= 0.8 ? 'Rất tốt' : kmo >= 0.7 ? 'Tốt' : kmo >= 0.6 ? 'Chấp nhận được' : 'Không phù hợp để phân tích nhân tố'}
+                    </p>
+                    <p>
+                        <strong>Bartlett&apos;s Test:</strong>{' '}
+                        {bartlettSignificant
+                            ? 'Có ý nghĩa thống kê (p < 0.05), ma trận tương quan phù hợp để phân tích nhân tố.'
+                            : 'Không có ý nghĩa thống kê, dữ liệu có thể không phù hợp cho EFA.'
+                        }
+                    </p>
+                    {kmoAcceptable && bartlettSignificant ? (
+                        <p className="text-green-700 font-medium">
+                            ✓ Dữ liệu phù hợp để tiến hành phân tích nhân tố.
+                        </p>
+                    ) : (
+                        <p className="text-red-600 font-medium">
+                            ✗ Dữ liệu có thể không phù hợp để phân tích nhân tố. Cần xem xét lại mẫu hoặc biến quan sát.
+                        </p>
+                    )}
+                </div>
             </div>
         </div>
     );

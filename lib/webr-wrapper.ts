@@ -22,7 +22,6 @@ export function setProgressCallback(callback: (msg: string) => void) {
 
 function updateProgress(msg: string) {
     initProgress = msg;
-    console.log(`WebR: ${msg}`);
     if (onProgressCallback) onProgressCallback(msg);
 }
 
@@ -118,7 +117,7 @@ export async function runCronbachAlpha(data: number[][]): Promise<{
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
 
-    console.log('DEBUG Cronbach raw result:', JSON.stringify(jsResult, null, 2));
+
 
     // WebR list parsing helper
     const getValue = (name: string): any => {
@@ -153,7 +152,7 @@ export async function runCronbachAlpha(data: number[][]): Promise<{
         });
     }
 
-    console.log('DEBUG Cronbach parsed:', { rawAlpha, stdAlpha, nItems, itemTotalStats });
+
 
     return {
         alpha: rawAlpha,
@@ -264,7 +263,7 @@ export async function runCorrelation(data: number[][]): Promise<{
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
 
-    console.log('DEBUG Correlation raw result:', JSON.stringify(jsResult, null, 2));
+
 
     const getValue = (name: string): any => {
         if (!jsResult.names || !jsResult.values) return null;
@@ -349,7 +348,7 @@ export async function runDescriptiveStats(data: number[][]): Promise<{
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
 
-    console.log('DEBUG WebR raw result:', JSON.stringify(jsResult, null, 2));
+
 
     // WebR returns {type:'list', names:[...], values:[{type:'double', values:[...]}, ...]}
     // We need to extract values by index based on names array
@@ -372,7 +371,7 @@ export async function runDescriptiveStats(data: number[][]): Promise<{
         N: (getValue('n') && getValue('n')[0]) || 0
     };
 
-    console.log('DEBUG Processed result:', JSON.stringify(processed, null, 2));
+
 
     return processed;
 }
