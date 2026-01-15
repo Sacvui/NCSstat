@@ -6,7 +6,7 @@ import { DataProfiler } from '@/components/DataProfiler';
 import { ResultsDisplay } from '@/components/ResultsDisplay';
 import { SmartGroupSelector, VariableSelector, AISettings } from '@/components/VariableSelector';
 import { profileData, DataProfile } from '@/lib/data-profiler';
-import { runCronbachAlpha, runCorrelation, runDescriptiveStats, initWebR, getWebRStatus, setProgressCallback } from '@/lib/webr-wrapper';
+import { runCronbachAlpha, runCorrelation, runDescriptiveStats, runTTestIndependent, runTTestPaired, runOneWayANOVA, runEFA, initWebR, getWebRStatus, setProgressCallback } from '@/lib/webr-wrapper';
 import { BarChart3, Brain, FileText, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
 type AnalysisStep = 'upload' | 'profile' | 'analyze' | 'cronbach-select' | 'ttest-select' | 'ttest-paired-select' | 'anova-select' | 'efa-select' | 'results';
@@ -554,7 +554,6 @@ export default function AnalyzePage() {
                                         setIsAnalyzing(true);
                                         setAnalysisType('ttest');
                                         try {
-                                            const { runTTestIndependent } = await import('@/lib/webr-wrapper');
                                             const group1Data = data.map(row => Number(row[g1]) || 0);
                                             const group2Data = data.map(row => Number(row[g2]) || 0);
                                             const result = await runTTestIndependent(group1Data, group2Data);
@@ -633,7 +632,6 @@ export default function AnalyzePage() {
                                         setIsAnalyzing(true);
                                         setAnalysisType('ttest-paired');
                                         try {
-                                            const { runTTestPaired } = await import('@/lib/webr-wrapper');
                                             const beforeData = data.map(row => Number(row[before]) || 0);
                                             const afterData = data.map(row => Number(row[after]) || 0);
                                             const result = await runTTestPaired(beforeData, afterData);
@@ -695,7 +693,6 @@ export default function AnalyzePage() {
                                         setIsAnalyzing(true);
                                         setAnalysisType('anova');
                                         try {
-                                            const { runOneWayANOVA } = await import('@/lib/webr-wrapper');
                                             const groups = selectedCols.map(col => data.map(row => Number(row[col]) || 0));
                                             const result = await runOneWayANOVA(groups);
                                             setResults({ type: 'anova', data: result, columns: selectedCols });
@@ -780,7 +777,6 @@ export default function AnalyzePage() {
                                         setIsAnalyzing(true);
                                         setAnalysisType('efa');
                                         try {
-                                            const { runEFA } = await import('@/lib/webr-wrapper');
                                             const efaData = data.map(row =>
                                                 selectedCols.map(col => Number(row[col]) || 0)
                                             );
