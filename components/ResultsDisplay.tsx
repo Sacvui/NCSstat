@@ -147,7 +147,6 @@ function ANOVAResults({ results, columns }: { results: any; columns: string[] })
     const significant = pValue < 0.05;
 
     return (
-    return (
         <div className="space-y-6">
             <Card>
                 <CardHeader>
@@ -567,7 +566,6 @@ function EFAResults({ results, columns }: { results: any; columns: string[] }) {
     const kmoAcceptable = kmo >= 0.6;
     const bartlettSignificant = bartlettP < 0.05;
 
-    return (
     return (
         <div className="space-y-6">
             {/* KMO and Bartlett's Test */}
