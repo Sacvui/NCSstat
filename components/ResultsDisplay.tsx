@@ -147,65 +147,74 @@ function ANOVAResults({ results, columns }: { results: any; columns: string[] })
     const significant = pValue < 0.05;
 
     return (
+    return (
         <div className="space-y-6">
-            <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">ANOVA Table</h4>
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-400">
-                            <th className="py-2 text-left font-semibold">Source</th>
-                            <th className="py-2 text-right font-semibold">df</th>
-                            <th className="py-2 text-right font-semibold">F</th>
-                            <th className="py-2 text-right font-semibold">Sig.</th>
-                            <th className="py-2 text-right font-semibold">η² (Eta Squared)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Between Groups</td>
-                            <td className="py-2 text-right">{results.dfBetween?.toFixed(0)}</td>
-                            <td className="py-2 text-right font-bold">{results.F?.toFixed(3)}</td>
-                            <td className={`py-2 text-right font-bold ${significant ? 'text-green-600' : 'text-gray-600'}`}>
-                                {pValue?.toFixed(4)} {significant && '***'}
-                            </td>
-                            <td className="py-2 text-right">{results.etaSquared?.toFixed(3)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Within Groups</td>
-                            <td className="py-2 text-right">{results.dfWithin?.toFixed(0)}</td>
-                            <td className="py-2 text-right">-</td>
-                            <td className="py-2 text-right">-</td>
-                            <td className="py-2 text-right">-</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Group Means</h4>
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-400">
-                            <th className="py-2 text-left font-semibold">Group</th>
-                            <th className="py-2 text-right font-semibold">Mean</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {columns.map((col, idx) => (
-                            <tr key={idx} className="border-b border-gray-200">
-                                <td className="py-2 font-medium">{col}</td>
-                                <td className="py-2 text-right">{results.groupMeans?.[idx]?.toFixed(3)}</td>
+            <Card>
+                <CardHeader>
+                    <CardTitle>ANOVA Table</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-200 bg-gray-50">
+                                <th className="py-2 text-left font-semibold">Source</th>
+                                <th className="py-2 text-right font-semibold">df</th>
+                                <th className="py-2 text-right font-semibold">F</th>
+                                <th className="py-2 text-right font-semibold">Sig.</th>
+                                <th className="py-2 text-right font-semibold">η² (Eta Squared)</th>
                             </tr>
-                        ))}
-                        <tr className="bg-gray-50">
-                            <td className="py-2 font-bold">Grand Mean</td>
-                            <td className="py-2 text-right font-bold">{results.grandMean?.toFixed(3)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Between Groups</td>
+                                <td className="py-2 text-right">{results.dfBetween?.toFixed(0)}</td>
+                                <td className="py-2 text-right font-bold">{results.F?.toFixed(3)}</td>
+                                <td className={`py-2 text-right font-bold ${significant ? 'text-green-600' : 'text-gray-600'}`}>
+                                    {pValue?.toFixed(4)} {significant && '***'}
+                                </td>
+                                <td className="py-2 text-right">{results.etaSquared?.toFixed(3)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Within Groups</td>
+                                <td className="py-2 text-right">{results.dfWithin?.toFixed(0)}</td>
+                                <td className="py-2 text-right">-</td>
+                                <td className="py-2 text-right">-</td>
+                                <td className="py-2 text-right">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
 
-            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Group Means</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="border-b border-gray-200 bg-gray-50">
+                                <th className="py-2 text-left font-semibold">Group</th>
+                                <th className="py-2 text-right font-semibold">Mean</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {columns.map((col, idx) => (
+                                <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                    <td className="py-2 font-medium">{col}</td>
+                                    <td className="py-2 text-right">{results.groupMeans?.[idx]?.toFixed(3)}</td>
+                                </tr>
+                            ))}
+                            <tr className="bg-blue-50">
+                                <td className="py-2 font-bold text-blue-900">Grand Mean</td>
+                                <td className="py-2 text-right font-bold text-blue-900">{results.grandMean?.toFixed(3)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
+
+            <div className="bg-gray-50 border border-gray-200 p-6 rounded-lg">
                 <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Kết luận</h4>
                 <p className="text-sm text-gray-800">
                     {significant
@@ -559,50 +568,57 @@ function EFAResults({ results, columns }: { results: any; columns: string[] }) {
     const bartlettSignificant = bartlettP < 0.05;
 
     return (
+    return (
         <div className="space-y-6">
             {/* KMO and Bartlett's Test */}
-            <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">KMO and Bartlett&apos;s Test</h4>
-                <table className="w-full text-sm">
-                    <tbody>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Kaiser-Meyer-Olkin Measure of Sampling Adequacy</td>
-                            <td className={`py-2 text-right font-bold ${kmoAcceptable ? 'text-green-600' : 'text-red-600'}`}>
-                                {kmo.toFixed(3)}
-                            </td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Bartlett&apos;s Test of Sphericity (Sig.)</td>
-                            <td className={`py-2 text-right font-bold ${bartlettSignificant ? 'text-green-600' : 'text-red-600'}`}>
-                                {bartlettP < 0.001 ? '< .001' : bartlettP.toFixed(4)} {bartlettSignificant && '***'}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>KMO and Bartlett&apos;s Test</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <table className="w-full text-sm">
+                        <tbody>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Kaiser-Meyer-Olkin Measure of Sampling Adequacy</td>
+                                <td className={`py-2 text-right font-bold ${kmoAcceptable ? 'text-green-600' : 'text-red-600'}`}>
+                                    {kmo.toFixed(3)}
+                                </td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Bartlett&apos;s Test of Sphericity (Sig.)</td>
+                                <td className={`py-2 text-right font-bold ${bartlettSignificant ? 'text-green-600' : 'text-red-600'}`}>
+                                    {bartlettP < 0.001 ? '< .001' : bartlettP.toFixed(4)} {bartlettSignificant && '***'}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
 
             {/* Loadings Matrix */}
             {results.loadings && (
-                <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                    <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Factor Loadings (Rotated)</h4>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Factor Loadings (Rotated)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <table className="w-full text-sm whitespace-nowrap">
                             <thead>
-                                <tr className="border-b border-gray-400">
-                                    <th className="py-2 px-3 text-left font-semibold">Variable</th>
+                                <tr className="border-b border-gray-200 bg-gray-50">
+                                    <th className="py-2 px-3 text-left font-semibold text-gray-700">Variable</th>
                                     {Array.isArray(results.loadings[0]) && results.loadings[0].map((_: any, idx: number) => (
-                                        <th key={idx} className="py-2 px-3 text-right font-semibold">Factor {idx + 1}</th>
+                                        <th key={idx} className="py-2 px-3 text-right font-semibold text-gray-700">Factor {idx + 1}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {columns.map((col, rowIdx) => (
-                                    <tr key={rowIdx} className="border-b border-gray-200 hover:bg-gray-50">
-                                        <td className="py-2 px-3 font-medium">{col}</td>
+                                    <tr key={rowIdx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td className="py-2 px-3 font-medium text-gray-900">{col}</td>
                                         {Array.isArray(results.loadings[rowIdx]) && results.loadings[rowIdx].map((val: number, colIdx: number) => (
                                             <td
                                                 key={colIdx}
-                                                className={`py-2 px-3 text-right ${Math.abs(val) >= 0.5 ? 'font-bold text-blue-700' : Math.abs(val) >= 0.3 ? 'text-gray-700' : 'text-gray-400'}`}
+                                                className={`py-2 px-3 text-right ${Math.abs(val) >= 0.5 ? 'font-bold text-blue-700' : Math.abs(val) >= 0.3 ? 'text-gray-700' : 'text-gray-300'}`}
                                             >
                                                 {val?.toFixed(3) || '-'}
                                             </td>
@@ -611,43 +627,47 @@ function EFAResults({ results, columns }: { results: any; columns: string[] }) {
                                 ))}
                             </tbody>
                         </table>
-                        <p className="text-xs text-gray-500 italic mt-2">
+                        <p className="text-xs text-gray-500 italic mt-2 p-2 bg-gray-50 rounded">
                             * Factor loadings ≥ 0.5 được tô đậm. Loadings ≥ 0.3 được giữ lại.
                         </p>
-                    </div>
-                </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Communalities */}
             {results.communalities && (
-                <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                    <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Communalities</h4>
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-gray-400">
-                                <th className="py-2 px-3 text-left font-semibold">Variable</th>
-                                <th className="py-2 px-3 text-right font-semibold">Extraction</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {columns.map((col, idx) => (
-                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                                    <td className="py-2 px-3 font-medium">{col}</td>
-                                    <td className={`py-2 px-3 text-right ${results.communalities[idx] < 0.4 ? 'text-red-600' : ''}`}>
-                                        {results.communalities[idx]?.toFixed(3) || '-'}
-                                    </td>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Communalities</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-b border-gray-200 bg-gray-50">
+                                    <th className="py-2 px-3 text-left font-semibold">Variable</th>
+                                    <th className="py-2 px-3 text-right font-semibold">Extraction</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    <p className="text-xs text-gray-500 italic mt-2">
-                        * Communality &lt; 0.4 được đánh dấu đỏ (biến giải thích kém).
-                    </p>
-                </div>
+                            </thead>
+                            <tbody>
+                                {columns.map((col, idx) => (
+                                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td className="py-2 px-3 font-medium">{col}</td>
+                                        <td className={`py-2 px-3 text-right ${results.communalities[idx] < 0.4 ? 'text-red-500 font-bold' : 'text-gray-700'}`}>
+                                            {results.communalities[idx]?.toFixed(3) || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-xs text-gray-500 italic mt-2 p-2 bg-gray-50 rounded">
+                            * Communality &lt; 0.4 được đánh dấu đỏ (biến giải thích kém).
+                        </p>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Interpretation */}
-            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
+            <div className="bg-gray-50 border border-gray-200 p-6 rounded-lg">
                 <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Đánh giá & Khuyến nghị</h4>
                 <div className="space-y-3 text-sm text-gray-800">
                     <p>
@@ -662,12 +682,12 @@ function EFAResults({ results, columns }: { results: any; columns: string[] }) {
                         }
                     </p>
                     {kmoAcceptable && bartlettSignificant ? (
-                        <p className="text-green-700 font-medium">
-                            ✓ Dữ liệu phù hợp để tiến hành phân tích nhân tố.
+                        <p className="text-green-700 font-medium flex items-center gap-2">
+                            <span>✓</span> Dữ liệu phù hợp để tiến hành phân tích nhân tố.
                         </p>
                     ) : (
-                        <p className="text-red-600 font-medium">
-                            ✗ Dữ liệu có thể không phù hợp để phân tích nhân tố. Cần xem xét lại mẫu hoặc biến quan sát.
+                        <p className="text-red-600 font-medium flex items-center gap-2">
+                            <span>✗</span> Dữ liệu có thể không phù hợp để phân tích nhân tố. Cần xem xét lại mẫu hoặc biến quan sát.
                         </p>
                     )}
                 </div>
