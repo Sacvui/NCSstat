@@ -56,42 +56,41 @@ export default function Home() {
         {/* Supported Methods */}
         <div className="mt-16 max-w-4xl mx-auto bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-white">
           <h2 className="text-3xl font-bold mb-6 text-center">Phương pháp hỗ trợ</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              'Cronbach\'s Alpha',
-              'EFA (Exploratory Factor)',
-              'Correlation (Tương quan)',
-              'T-test (Kiểm định T)',
-              'ANOVA (So sánh nhóm)',
-              'Regression (Hồi quy)',
-              'Chi-Square (Chi bình phương)',
-              'Mann-Whitney U'
-            ].map(method => (
-              <div key={method} className="bg-white/20 rounded-lg px-4 py-2 text-center font-medium hover:bg-white/30 transition-colors cursor-default">
-                {method}
-              </div>
-            ))}
-          </div>
+          {[
+            '🛡️ Độ tin cậy (Cronbach\'s Alpha)',
+            '🔍 Khám phá nhân tố (EFA)',
+            '🏗️ Khẳng định nhân tố (CFA)',
+            '🌐 Mô hình cấu trúc (SEM)',
+            '📈 Hồi quy đa biến (Regression)',
+            '⚖️ So sánh sự khác biệt (T-test/ANOVA)',
+            '🔗 Tương quan & Chi-Square',
+            '🎲 Kiểm định phi tham số (Non-parametric)'
+          ].map(method => (
+            <div key={method} className="bg-white/20 rounded-lg px-4 py-3 text-center font-medium hover:bg-white/30 hover:scale-105 transition-all cursor-default shadow-lg backdrop-blur-sm border border-white/10">
+              {method}
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-20 pt-8 border-t border-white/20 text-center text-blue-100 pb-8">
-        <p>
-          1 sản phẩm của hệ sinh thái hỗ trợ nghiên cứu khoa học từ{' '}
-          <a
-            href="https://ncskit.org"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold text-white hover:text-blue-200 transition-colors"
-          >
-            NCSKit.org
-          </a>
-        </p>
-        <p className="mt-2 text-xs text-blue-200 opacity-70">
-          v1.1.0 (Mobile Ready)
-        </p>
-      </footer>
     </div>
+
+      {/* Footer */ }
+  <footer className="mt-20 pt-8 border-t border-white/20 text-center text-blue-100 pb-8">
+    <p>
+      1 sản phẩm của hệ sinh thái hỗ trợ nghiên cứu khoa học từ{' '}
+      <a
+        href="https://ncskit.org"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-bold text-white hover:text-blue-200 transition-colors"
+      >
+        NCSKit.org
+      </a>
+    </p>
+    <p className="mt-2 text-xs text-blue-200 opacity-70">
+      v1.1.0 (Mobile Ready)
+    </p>
+  </footer>
+    </div >
   );
 }
