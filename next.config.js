@@ -3,6 +3,20 @@ const nextConfig = {
     // Headers for WebR (WASM, Service Worker)
     async headers() {
         return [
+            // Global headers for all pages to enable SharedArrayBuffer
+            {
+                source: '/:path*',
+                headers: [
+                    {
+                        key: 'Cross-Origin-Embedder-Policy',
+                        value: 'require-corp',
+                    },
+                    {
+                        key: 'Cross-Origin-Opener-Policy',
+                        value: 'same-origin',
+                    },
+                ],
+            },
             {
                 source: '/webr/:path*',
                 headers: [
