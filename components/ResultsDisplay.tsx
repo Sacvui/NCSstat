@@ -235,70 +235,79 @@ function CronbachResults({ results, columns }: { results: any; columns?: string[
 
     return (
         <div className="space-y-8 font-sans text-gray-900">
-
-            {/* Reliability Statistics Table - SPSS Style */}
-            <SPSSTable title="Reliability Statistics">
-                <table className="w-full text-left text-sm">
-                    <thead>
-                        <tr className="border-b border-gray-400">
-                            <th className="py-2 pr-4 font-semibold">Cronbach&apos;s Alpha</th>
-                            <th className="py-2 pr-4 font-semibold">N of Items</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td className="py-2 pr-4">{alpha.toFixed(3)}</td>
-                            <td className="py-2 pr-4">{nItems}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </SPSSTable>
-
-            {/* Item-Total Statistics Table - SPSS Style */}
-            {itemTotalStats.length > 0 && (
-                <SPSSTable title="Item-Total Statistics">
+            {/* Reliability Statistics Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Reliability Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
                     <table className="w-full text-left text-sm">
                         <thead>
-                            <tr className="border-b border-gray-400">
-                                <th className="py-2 px-3 font-semibold"></th>
-                                <th className="py-2 px-3 font-semibold text-right">Scale Mean if Item Deleted</th>
-                                <th className="py-2 px-3 font-semibold text-right">Scale Variance if Item Deleted</th>
-                                <th className="py-2 px-3 font-semibold text-right">Corrected Item-Total Correlation</th>
-                                <th className="py-2 px-3 font-semibold text-right">Cronbach&apos;s Alpha if Item Deleted</th>
+                            <tr className="border-b border-gray-200">
+                                <th className="py-2 pr-4 font-semibold">Cronbach&apos;s Alpha</th>
+                                <th className="py-2 pr-4 font-semibold">N of Items</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {itemTotalStats.map((item: any, idx: number) => (
-                                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50">
-                                    <td className="py-2 px-3 font-medium">
-                                        {columns?.[idx] || item.itemName}
-                                    </td>
-                                    <td className="py-2 px-3 text-right">{item.scaleMeanIfDeleted?.toFixed(3) || '-'}</td>
-                                    <td className="py-2 px-3 text-right">{item.scaleVarianceIfDeleted?.toFixed(3) || '-'}</td>
-                                    <td className={`py-2 px-3 text-right ${item.correctedItemTotalCorrelation < 0.3 ? 'text-red-600 font-bold' : ''}`}>
-                                        {item.correctedItemTotalCorrelation?.toFixed(3) || '-'}
-                                    </td>
-                                    <td className={`py-2 px-3 text-right ${item.alphaIfItemDeleted > alpha ? 'text-orange-600 font-bold' : ''}`}>
-                                        {item.alphaIfItemDeleted?.toFixed(3) || '-'}
-                                    </td>
-                                </tr>
-                            ))}
+                            <tr>
+                                <td className="py-2 pr-4">{alpha.toFixed(3)}</td>
+                                <td className="py-2 pr-4">{nItems}</td>
+                            </tr>
                         </tbody>
                     </table>
-                    <p className="text-xs text-gray-500 italic p-2">
-                        * Corrected Item-Total Correlation &lt; 0.3 được đánh dấu đỏ (cần xem xét loại bỏ).
-                        Alpha if Item Deleted &gt; Alpha hiện tại được đánh dấu cam (loại bỏ có thể cải thiện độ tin cậy).
-                    </p>
-                </SPSSTable>
+                </CardContent>
+            </Card>
+
+            {/* Item-Total Statistics Table */}
+            {itemTotalStats.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Item-Total Statistics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="overflow-x-auto">
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                            <thead>
+                                <tr className="border-b border-gray-200 bg-gray-50">
+                                    <th className="py-3 px-4 font-semibold text-gray-700">Variable</th>
+                                    <th className="py-3 px-4 font-semibold text-right text-gray-700">Scale Mean if Item Deleted</th>
+                                    <th className="py-3 px-4 font-semibold text-right text-gray-700">Scale Variance if Item Deleted</th>
+                                    <th className="py-3 px-4 font-semibold text-right text-gray-700">Corrected Item-Total Correlation</th>
+                                    <th className="py-3 px-4 font-semibold text-right text-gray-700">Cronbach&apos;s Alpha if Item Deleted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {itemTotalStats.map((item: any, idx: number) => (
+                                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                        <td className="py-3 px-4 font-medium text-gray-900">
+                                            {columns?.[idx] || item.itemName}
+                                        </td>
+                                        <td className="py-3 px-4 text-right text-gray-600">{item.scaleMeanIfDeleted?.toFixed(3) || '-'}</td>
+                                        <td className="py-3 px-4 text-right text-gray-600">{item.scaleVarianceIfDeleted?.toFixed(3) || '-'}</td>
+                                        <td className={`py-3 px-4 text-right ${item.correctedItemTotalCorrelation < 0.3 ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
+                                            {item.correctedItemTotalCorrelation?.toFixed(3) || '-'}
+                                        </td>
+                                        <td className={`py-3 px-4 text-right ${item.alphaIfItemDeleted > alpha ? 'text-orange-600 font-bold' : 'text-gray-600'}`}>
+                                            {item.alphaIfItemDeleted?.toFixed(3) || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <p className="text-xs text-gray-500 italic p-4 bg-gray-50 mt-4 rounded-md">
+                            * Corrected Item-Total Correlation &lt; 0.3 được đánh dấu đỏ (cần xem xét loại bỏ).
+                            Alpha if Item Deleted &gt; Alpha hiện tại được đánh dấu cam (loại bỏ có thể cải thiện độ tin cậy).
+                        </p>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Interpretation Section */}
-            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
-                <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Đánh Giá &amp; Khuyến Nghị</h4>
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 p-6 rounded-lg">
+                <h4 className="font-bold mb-4 text-indigo-900 uppercase text-xs tracking-wider">Đánh Giá &amp; Khuyến Nghị</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                        <div className="text-sm font-medium mb-2 text-gray-600">Độ tin cậy thang đo:</div>
-                        <div className={`text-2xl font-bold ${alpha >= 0.7 ? 'text-green-700' : 'text-orange-600'}`}>
+                        <div className="text-sm font-medium mb-2 text-indigo-700">Độ tin cậy thang đo:</div>
+                        <div className={`text-3xl font-bold ${alpha >= 0.7 ? 'text-green-600' : 'text-orange-600'}`}>
                             {alpha >= 0.9 ? 'Xuất sắc' :
                                 alpha >= 0.8 ? 'Tốt' :
                                     alpha >= 0.7 ? 'Chấp nhận được' :
@@ -306,8 +315,8 @@ function CronbachResults({ results, columns }: { results: any; columns?: string[
                         </div>
                     </div>
                     <div>
-                        <div className="text-sm font-medium mb-2 text-gray-600">Khuyến nghị:</div>
-                        <p className="text-sm text-gray-800 leading-relaxed">
+                        <div className="text-sm font-medium mb-2 text-indigo-700">Khuyến nghị:</div>
+                        <p className="text-sm text-gray-700 leading-relaxed font-medium">
                             {alpha >= 0.7
                                 ? 'Thang đo đảm bảo độ tin cậy. Có thể sử dụng cho các phân tích tiếp theo.'
                                 : 'Cần xem xét loại bỏ biến quan sát rác hoặc kiểm tra lại cấu trúc thang đo.'}
@@ -487,45 +496,49 @@ function PairedTTestResults({ results, columns }: { results: any; columns: strin
 
     return (
         <div className="space-y-6">
-            <div className="bg-white border-t-2 border-b-2 border-black p-4">
-                <h4 className="text-sm font-bold uppercase mb-4 tracking-wide text-gray-700">Paired Samples T-test Results</h4>
-                <table className="w-full text-sm">
-                    <tbody>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Before ({columns[0]})</td>
-                            <td className="py-2 text-right">Mean = {results.meanBefore?.toFixed(3)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">After ({columns[1]})</td>
-                            <td className="py-2 text-right">Mean = {results.meanAfter?.toFixed(3)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Mean Difference (Before - After)</td>
-                            <td className="py-2 text-right font-bold">{results.meanDiff?.toFixed(3)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">t-statistic</td>
-                            <td className="py-2 text-right">{results.t?.toFixed(3)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">Degrees of Freedom (df)</td>
-                            <td className="py-2 text-right">{results.df?.toFixed(0)}</td>
-                        </tr>
-                        <tr className="border-b border-gray-200">
-                            <td className="py-2 font-medium">p-value (2-tailed)</td>
-                            <td className={`py-2 text-right font-bold ${significant ? 'text-green-600' : 'text-gray-600'}`}>
-                                {pValue?.toFixed(4)} {significant && '***'}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="py-2 font-medium">95% CI</td>
-                            <td className="py-2 text-right">[{results.ci95Lower?.toFixed(3)}, {results.ci95Upper?.toFixed(3)}]</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Paired Samples T-test Results</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <table className="w-full text-sm">
+                        <tbody>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Before ({columns[0]})</td>
+                                <td className="py-2 text-right">Mean = {results.meanBefore?.toFixed(3)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">After ({columns[1]})</td>
+                                <td className="py-2 text-right">Mean = {results.meanAfter?.toFixed(3)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Mean Difference (Before - After)</td>
+                                <td className="py-2 text-right font-bold">{results.meanDiff?.toFixed(3)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">t-statistic</td>
+                                <td className="py-2 text-right">{results.t?.toFixed(3)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">Degrees of Freedom (df)</td>
+                                <td className="py-2 text-right">{results.df?.toFixed(0)}</td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">p-value (2-tailed)</td>
+                                <td className={`py-2 text-right font-bold ${significant ? 'text-green-600' : 'text-gray-600'}`}>
+                                    {pValue?.toFixed(4)} {significant && '***'}
+                                </td>
+                            </tr>
+                            <tr className="border-b border-gray-200">
+                                <td className="py-2 font-medium">95% CI</td>
+                                <td className="py-2 text-right">[{results.ci95Lower?.toFixed(3)}, {results.ci95Upper?.toFixed(3)}]</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </CardContent>
+            </Card>
 
-            <div className="bg-gray-50 border border-gray-200 p-6 rounded-sm">
+            <div className="bg-gray-50 border border-gray-200 p-6 rounded-lg">
                 <h4 className="font-bold mb-4 text-gray-800 uppercase text-xs tracking-wider">Kết luận</h4>
                 <p className="text-sm text-gray-800">
                     {significant
