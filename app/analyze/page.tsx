@@ -14,7 +14,6 @@ import { AnalysisSelector } from '@/components/AnalysisSelector';
 import { useAnalysisSession } from '@/hooks/useAnalysisSession';
 import { AnalysisStep } from '@/types/analysis';
 import { StepIndicator } from '@/components/ui/StepIndicator';
-import { StepIndicator } from '@/components/ui/StepIndicator';
 import { Badge } from '@/components/ui/Badge';
 import CFASelection from '@/components/CFASelection';
 import { runCFA } from '@/lib/webr-wrapper';
