@@ -13,6 +13,8 @@ import { WebRStatus } from '@/components/WebRStatus';
 import { AnalysisSelector } from '@/components/AnalysisSelector';
 import { useAnalysisSession } from '@/hooks/useAnalysisSession';
 import { AnalysisStep } from '@/types/analysis';
+import { StepIndicator } from '@/components/ui/StepIndicator';
+import { Badge } from '@/components/ui/Badge';
 
 export default function AnalyzePage() {
     // Session State Management
@@ -247,35 +249,45 @@ export default function AnalyzePage() {
         }
     };
 
+    // Map steps for StepIndicator
+    const getStepId = (): string => {
+        if (step === 'upload') return 'upload';
+        if (step === 'profile') return 'profile';
+        if (step === 'results') return 'results';
+        return 'analyze'; // All selection/analysis steps
+    };
+
+    const steps = [
+        { id: 'upload', label: 'Tải dữ liệu' },
+        { id: 'profile', label: 'Kiểm tra' },
+        { id: 'analyze', label: 'Phân tích' },
+        { id: 'results', label: 'Kết quả' }
+    ];
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
             {/* Toast Notification */}
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
             {/* Header */}
-            <header className="bg-white shadow-sm border-b">
+            <header className="bg-white shadow-sm border-b border-slate-200">
                 <div className="container mx-auto px-6 py-4">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <BarChart3 className="w-8 h-8 text-blue-600" />
+                            <BarChart3 className="w-8 h-8 text-indigo-600" />
                             <div>
-                                <h1 className="text-2xl font-bold text-gray-800">ncsStat</h1>
-                                <p className="text-sm text-gray-500">Phân tích thống kê cho NCS Việt Nam</p>
+                                <h1 className="text-2xl font-bold text-slate-800">ncsStat</h1>
+                                <p className="text-sm text-slate-600">Phân tích thống kê cho NCS Việt Nam</p>
                             </div>
                         </div>
 
                         {/* Privacy & Settings */}
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-                                <button
-                                    onClick={() => setIsPrivateMode(!isPrivateMode)}
-                                    className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${isPrivateMode ? 'text-gray-500' : 'text-blue-600'}`}
-                                    title={isPrivateMode ? "Đang bật chế độ riêng tư (Không lưu)" : "Đang lưu phiên làm việc"}
-                                >
-                                    {isPrivateMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <Badge variant={isPrivateMode ? 'default' : 'info'} className="cursor-pointer" onClick={() => setIsPrivateMode(!isPrivateMode)}>
+                                    {isPrivateMode ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
                                     {isPrivateMode ? 'Riêng tư' : 'Đang lưu'}
-                                </button>
-                                <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                                </Badge>
                                 <button
                                     onClick={() => {
                                         if (confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu phiên làm việc?')) {
@@ -283,10 +295,10 @@ export default function AnalyzePage() {
                                             showToast('Đã xóa dữ liệu phiên làm việc', 'info');
                                         }
                                     }}
-                                    className="text-red-500 hover:text-red-700"
+                                    className="text-slate-400 hover:text-red-600 transition-colors"
                                     title="Xóa phiên làm việc"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
 
