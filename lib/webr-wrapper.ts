@@ -219,12 +219,20 @@ export async function runEFA(data: number[][], nfactors: number): Promise<{
     # EFA with varimax rotation
     efa_result <- fa(data, nfactors=${nfactors}, rotate="varimax", fm="ml")
     
+    // Convert loadings matrix to vector and get dimensions
+    loadings_mat <- as.matrix(efa_result$loadings)
+    
     list(
       kmo = kmo_result$MSA,
       bartlett_p = bart_result$p.value,
-      loadings = efa_result$loadings[],
-      variance = efa_result$Vaccounted,
-      communalities = efa_result$communality
+      
+      # Flatten matrices for safe transport
+      loadings = as.numeric(loadings_mat),
+      n_vars = nrow(loadings_mat),
+      n_factors = ncol(loadings_mat),
+      
+      variance = as.numeric(efa_result$Vaccounted),
+      communalities = as.numeric(efa_result$communality)
     )
   `;
 
@@ -233,11 +241,32 @@ export async function runEFA(data: number[][], nfactors: number): Promise<{
 
     const getValue = parseWebRResult(jsResult);
 
+    // Parse loadings matrix
+    const loadingsFlat = getValue('loadings') || [];
+    const nVars = getValue('n_vars')?.[0] || 0;
+    const nFactors = getValue('n_factors')?.[0] || 0;
+
+    // Convert flat array to number[][] (rows x cols)
+    const loadings: number[][] = [];
+    if (nVars > 0 && nFactors > 0) {
+        for (let i = 0; i < nVars; i++) {
+            const row: number[] = [];
+            for (let j = 0; j < nFactors; j++) {
+                // R matrix is column-major usually, but as.numeric on matrix traverses by column
+                // Wait, as.numeric(matrix) flattens column by column: Col1, Col2...
+                // So index = row + col * nVars
+                const idx = i + j * nVars;
+                row.push(loadingsFlat[idx] || 0);
+            }
+            loadings.push(row);
+        }
+    }
+
     return {
         kmo: getValue('kmo')?.[0] || 0,
         bartlettP: getValue('bartlett_p')?.[0] || 0,
-        loadings: getValue('loadings'),
-        variance: getValue('variance'),
+        loadings: loadings,
+        variance: getValue('variance'), // This is likely fine as flat array or simple list
         communalities: getValue('communalities')
     };
 }
