@@ -18,7 +18,8 @@ export function AnalysisSelector({ onSelect, onRunAnalysis, isAnalyzing }: Analy
         { id: 'efa-select', title: 'EFA', desc: 'Phân tích nhân tố khám phá', icon: Grid3x3, action: 'select', colors: 'hover:border-orange-500 hover:bg-orange-50/30' },
         { id: 'regression-select', title: 'Hồi quy Tuyến tính', desc: 'Multiple Linear Regression', icon: TrendingUp, action: 'select', colors: 'hover:border-pink-500 hover:bg-pink-50/30' },
         { id: 'chisq-select', title: 'Chi-Square Test', desc: 'Kiểm định độc lập (Biến định danh)', icon: Grid3x3, action: 'select', colors: 'hover:border-teal-500 hover:bg-teal-50/30' },
-        { id: 'mannwhitney-select', title: 'Mann-Whitney U', desc: 'So sánh 2 nhóm (Phi tham số)', icon: Activity, action: 'select', colors: 'hover:border-cyan-500 hover:bg-cyan-50/30' }
+        { id: 'mannwhitney-select', title: 'Mann-Whitney U', desc: 'So sánh 2 nhóm (Phi tham số)', icon: Activity, action: 'select', colors: 'hover:border-cyan-500 hover:bg-cyan-50/30' },
+        { id: 'cfa-select', title: 'CFA', desc: 'Phân tích nhân tố khẳng định', icon: Network, action: 'select', colors: 'hover:border-rose-500 hover:bg-rose-50/30' }
     ];
 
     return (

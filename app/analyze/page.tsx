@@ -14,7 +14,10 @@ import { AnalysisSelector } from '@/components/AnalysisSelector';
 import { useAnalysisSession } from '@/hooks/useAnalysisSession';
 import { AnalysisStep } from '@/types/analysis';
 import { StepIndicator } from '@/components/ui/StepIndicator';
+import { StepIndicator } from '@/components/ui/StepIndicator';
 import { Badge } from '@/components/ui/Badge';
+import CFASelection from '@/components/CFASelection';
+import { runCFA } from '@/lib/webr-wrapper';
 
 export default function AnalyzePage() {
     // Session State Management
@@ -858,6 +861,34 @@ export default function AnalyzePage() {
                                 ← Quay lại
                             </button>
                         </div>
+                    )}
+
+                    {/* CFA Selection */}
+                    {step === 'cfa-select' && (
+                        <CFASelection
+                            columns={getNumericColumns()}
+                            onRunCFA={async (syntax, factors) => {
+                                setIsAnalyzing(true);
+                                setAnalysisType('cfa');
+                                try {
+                                    // Extract unique columns needed
+                                    const neededCols = Array.from(new Set(factors.flatMap((f: any) => f.indicators)));
+                                    // Need to cast correct type for TS, assuming neededCols is string[]
+                                    const cfaData = data.map(row => (neededCols as string[]).map((c: string) => Number(row[c]) || 0));
+
+                                    const result = await runCFA(cfaData, neededCols as string[], syntax);
+                                    setResults({ type: 'cfa', data: result, columns: neededCols as string[] });
+                                    setStep('results');
+                                    showToast('Phân tích CFA thành công!', 'success');
+                                } catch (err) {
+                                    handleAnalysisError(err);
+                                } finally {
+                                    setIsAnalyzing(false);
+                                }
+                            }}
+                            isAnalyzing={isAnalyzing}
+                            onBack={() => setStep('analyze')}
+                        />
                     )}
 
                     {step === 'results' && (results || multipleResults.length > 0) && (
