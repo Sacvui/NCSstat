@@ -945,7 +945,8 @@ export async function runCFA(
     
     # 3. Run CFA
     # std.lv = TRUE fixes scale by setting factor variance to 1
-    fit <- cfa(model, data=df, std.lv=TRUE) 
+    # missing = "fiml" handles missing data using Full Information Maximum Likelihood
+    fit <- cfa(model, data=df, std.lv=TRUE, missing="fiml") 
     
     # 4. Extract Fit Measures
     fits <- fitMeasures(fit, c("cfi", "tli", "rmsea", "srmr", "chisq", "df", "pvalue"))
@@ -1072,7 +1073,7 @@ export async function runSEM(
     # 3. Run SEM
     # std.lv = TRUE fixes scale by setting factor variance to 1
     # sem() function is used for structural models
-    fit <- sem(model, data=df, std.lv=TRUE)
+    fit <- sem(model, data=df, std.lv=TRUE, missing="fiml")
     
     # 4. Extract Fit Measures
     fits <- fitMeasures(fit, c("cfi", "tli", "rmsea", "srmr", "chisq", "df", "pvalue"))

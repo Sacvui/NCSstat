@@ -83,7 +83,13 @@ export default function AnalyzePage() {
         } else if (msg.includes('singular matrix') || msg.includes('computational singular')) {
             showToast('Lỗi: Ma trận đặc dị (Có đa cộng tuyến hoàn hảo hoặc biến hằng số).', 'error');
         } else if (msg.includes('missing value') || msg.includes('NA/NaN')) {
-            showToast('Lỗi: Dữ liệu chứa giá trị trống (NA) hoặc lỗi. Vui lòng làm sạch dữ liệu.', 'error');
+            showToast('Lỗi: Dữ liệu chứa giá trị trống (NA). Đang thử dùng FIML, nhưng nếu vẫn lỗi hãy làm sạch dữ liệu.', 'error');
+        } else if (msg.includes('model is not identified')) {
+            showToast('Lỗi SEM/CFA: Mô hình không xác định (Not Identified). Kiểm tra lại số lượng biến quan sát (cần >= 3 biến/nhân tố) hoặc bậc tự do.', 'error');
+        } else if (msg.includes('could not find function')) {
+            showToast('Lỗi: Gói phân tích chưa tải xong. Vui lòng thử lại sau 5 giây.', 'error');
+        } else if (msg.includes('covariance matrix is not positive definite')) {
+            showToast('Lỗi: Ma trận hiệp phương sai không xác định dương (Not Positive Definite). Kiểm tra đa cộng tuyến hoặc kích thước mẫu quá nhỏ.', 'error');
         } else {
             // Translate common R errors if possible
             showToast(`Lỗi: ${msg.replace('Error in', '').substring(0, 100)}...`, 'error');
