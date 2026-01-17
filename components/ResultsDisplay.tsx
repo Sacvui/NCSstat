@@ -13,6 +13,7 @@ import {
     Legend,
 } from 'chart.js';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
+import { AIInterpretation } from './AIInterpretation';
 
 ChartJS.register(
     CategoryScale,
@@ -32,51 +33,29 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({ analysisType, results, columns }: ResultsDisplayProps) {
-    if (analysisType === 'cronbach') {
-        return <CronbachResults results={results} columns={columns} />;
-    }
+    const display = (() => {
+        if (analysisType === 'cronbach') return <CronbachResults results={results} columns={columns} />;
+        if (analysisType === 'correlation') return <CorrelationResults results={results} columns={columns} />;
+        if (analysisType === 'descriptive') return <DescriptiveResults results={results} columns={columns} />;
+        if (analysisType === 'ttest') return <TTestResults results={results} columns={columns} />;
+        if (analysisType === 'ttest-paired') return <PairedTTestResults results={results} columns={columns} />;
+        if (analysisType === 'anova') return <ANOVAResults results={results} columns={columns} />;
+        if (analysisType === 'efa') return <EFAResults results={results} columns={columns} />;
+        if (analysisType === 'regression') return <RegressionResults results={results} columns={columns} />;
+        if (analysisType === 'chisq') return <ChiSquareResults results={results} />;
+        if (analysisType === 'mannwhitney') return <MannWhitneyResults results={results} />;
+        if (analysisType === 'cfa' || analysisType === 'sem') return <CFAResults results={results} />;
+        return null;
+    })();
 
-    if (analysisType === 'correlation') {
-        return <CorrelationResults results={results} columns={columns} />;
-    }
+    if (!display) return null;
 
-    if (analysisType === 'descriptive') {
-        return <DescriptiveResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'ttest') {
-        return <TTestResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'ttest-paired') {
-        return <PairedTTestResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'anova') {
-        return <ANOVAResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'efa') {
-        return <EFAResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'regression') {
-        return <RegressionResults results={results} columns={columns} />;
-    }
-
-    if (analysisType === 'chisq') {
-        return <ChiSquareResults results={results} />;
-    }
-
-    if (analysisType === 'mannwhitney') {
-        return <MannWhitneyResults results={results} />;
-    }
-
-    if (analysisType === 'cfa' || analysisType === 'sem') {
-        return <CFAResults results={results} />;
-    }
-
-    return null;
+    return (
+        <div className="space-y-8">
+            {display}
+            <AIInterpretation analysisType={analysisType} results={results} />
+        </div>
+    );
 }
 
 // T-test Results Component
@@ -760,6 +739,7 @@ function RegressionResults({ results, columns }: { results: any, columns: string
                                 <th className="py-3 px-4 text-right font-bold uppercase text-xs tracking-wider">Std. Error</th>
                                 <th className="py-3 px-4 text-right font-bold uppercase text-xs tracking-wider">t</th>
                                 <th className="py-3 px-4 text-right font-bold uppercase text-xs tracking-wider">Sig.</th>
+                                <th className="py-3 px-4 text-right font-bold uppercase text-xs tracking-wider text-purple-700">VIF</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -779,6 +759,9 @@ function RegressionResults({ results, columns }: { results: any, columns: string
                                     </td>
                                     <td className={`py-3 px-4 text-right font-bold ${coef.pValue < 0.05 ? 'text-green-600' : 'text-gray-400'}`}>
                                         {coef.pValue < 0.001 ? '< .001' : coef.pValue.toFixed(3)}
+                                    </td>
+                                    <td className="py-3 px-4 text-right font-bold text-purple-700">
+                                        {coef.vif ? coef.vif.toFixed(3) : '-'}
                                     </td>
                                 </tr>
                             ))}

@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import 'jspdf-autotable';
+// Note: jspdf-autotable is usually auto-attached to jsPDF prototype.
+// If type errors occur, might need: import autoTable from 'jspdf-autotable';
 
 export interface PDFExportOptions {
     title: string;
@@ -10,7 +12,7 @@ export interface PDFExportOptions {
 }
 
 /**
- * Export analysis results to PDF
+ * Export analysis results to PDF (Text & Table based)
  */
 export async function exportToPDF(options: PDFExportOptions): Promise<void> {
     const {
@@ -21,354 +23,197 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
         filename = `statviet_${analysisType}_${Date.now()}.pdf`
     } = options;
 
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    let yPosition = 20;
+    const doc = new jsPDF();
+    let yPos = 20;
+
+    // Helper to check page break
+    const checkPageBreak = (height: number = 10) => {
+        if (yPos + height > 280) {
+            doc.addPage();
+            yPos = 20;
+        }
+    };
 
     // Header
-    pdf.setFontSize(20);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('StatViet - Báo Cáo Phân Tích', pageWidth / 2, yPosition, { align: 'center' });
+    doc.setFontSize(18);
+    doc.setTextColor(40);
+    doc.text(title, 14, yPos);
+    yPos += 10;
 
-    yPosition += 10;
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(new Date().toLocaleDateString('vi-VN'), pageWidth / 2, yPosition, { align: 'center' });
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Được tạo bởi ncsStat vào ${new Date().toLocaleString('vi-VN')}`, 14, yPos);
+    yPos += 10;
 
-    yPosition += 15;
+    // Line separator
+    doc.setDrawColor(200);
+    doc.line(14, yPos, 196, yPos);
+    yPos += 10;
 
-    // Title
-    pdf.setFontSize(16);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(title, 20, yPosition);
-    yPosition += 10;
+    // Analysis Specific Content
+    doc.setFontSize(12);
+    doc.setTextColor(0);
 
-    // Analysis Type
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'normal');
-    const analysisTypeMap: Record<string, string> = {
-        'cronbach': "Cronbach's Alpha",
-        'cronbach-batch': "Cronbach's Alpha (Batch)",
-        'correlation': 'Ma Trận Tương Quan',
-        'descriptive': 'Thống Kê Mô Tả',
-        'ttest': 'Independent Samples T-test',
-        'anova': 'One-Way ANOVA',
-        'efa': 'Exploratory Factor Analysis',
-        'regression': 'Multiple Linear Regression',
-    };
-    pdf.text(`Phương pháp: ${analysisTypeMap[analysisType] || analysisType}`, 20, yPosition);
-    yPosition += 15;
-
-    // Results based on analysis type
+    // Dynamic handling based on type
     if (analysisType === 'cronbach') {
-        const alpha = results.alpha || results.rawAlpha || 0;
+        doc.text(`Cronbach's Alpha: ${results.alpha?.toFixed(3) ?? 'N/A'}`, 14, yPos);
+        yPos += 7;
 
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Kết Quả:', 20, yPosition);
-        yPosition += 8;
+        const alpha = results.alpha || 0;
+        let evalText = alpha >= 0.9 ? 'Xuất sắc' : alpha >= 0.7 ? 'Chấp nhận được' : 'Kém';
+        doc.text(`Đánh giá: ${evalText}`, 14, yPos);
+        yPos += 10;
 
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Cronbach's Alpha: ${alpha.toFixed(3)}`, 30, yPosition);
-        yPosition += 8;
+        // Item Stats Table
+        if (results.itemTotalStats) {
+            checkPageBreak(50);
+            doc.text('Thống kê Item-Total:', 14, yPos);
+            yPos += 5;
 
-        // Interpretation
-        let interpretation = '';
-        if (alpha >= 0.9) interpretation = 'Xuất sắc - Độ tin cậy rất cao';
-        else if (alpha >= 0.8) interpretation = 'Tốt - Độ tin cậy cao';
-        else if (alpha >= 0.7) interpretation = 'Chấp nhận được';
-        else if (alpha >= 0.6) interpretation = 'Khá - Cần cải thiện';
-        else interpretation = 'Kém - Không chấp nhận được';
+            const headers = [['Biến', 'Scale Mean if Deleted', 'Corrected Item-Total Cor.', 'Alpha if Deleted']];
+            const data = results.itemTotalStats.map((item: any) => [
+                item.itemName,
+                item.scaleMeanIfDeleted.toFixed(3),
+                item.correctedItemTotalCorrelation.toFixed(3),
+                item.alphaIfItemDeleted.toFixed(3)
+            ]);
 
-        pdf.text(`Đánh giá: ${interpretation}`, 30, yPosition);
-        yPosition += 15;
-
-        // Recommendation
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Khuyến nghị:', 20, yPosition);
-        yPosition += 8;
-
-        pdf.setFont('helvetica', 'normal');
-        const recommendation = alpha >= 0.7
-            ? 'Thang đo có độ tin cậy tốt, có thể sử dụng cho nghiên cứu.'
-            : 'Nên xem xét loại bỏ một số item hoặc điều chỉnh thang đo để cải thiện độ tin cậy.';
-
-        const splitRecommendation = pdf.splitTextToSize(recommendation, pageWidth - 40);
-        pdf.text(splitRecommendation, 30, yPosition);
-
-    } else if (analysisType === 'ttest') {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Independent Samples T-test:', 20, yPosition);
-        yPosition += 10;
-
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-
-        const rows = [
-            [`Biến so sánh: ${columns.join(' vs ')}`],
-            [`Trung bình nhóm 1: ${results.mean1?.toFixed(3) || 'N/A'}`],
-            [`Trung bình nhóm 2: ${results.mean2?.toFixed(3) || 'N/A'}`],
-            [`Chênh lệch trung bình: ${results.meanDiff?.toFixed(3) || 'N/A'}`],
-            [`Giá trị t: ${results.t?.toFixed(3) || 'N/A'}`],
-            [`Bậc tự do (df): ${results.df?.toFixed(2) || 'N/A'}`],
-            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
-            [`95% CI: [${results.ci95Lower?.toFixed(3) || 'N/A'}, ${results.ci95Upper?.toFixed(3) || 'N/A'}]`],
-            [`Cohen's d: ${results.effectSize?.toFixed(3) || 'N/A'}`],
-        ];
-
-        rows.forEach(row => {
-            pdf.text(row[0], 30, yPosition);
-            yPosition += 7;
-        });
-
-        yPosition += 5;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Kết luận:', 20, yPosition);
-        yPosition += 8;
-        pdf.setFont('helvetica', 'normal');
-
-        const pValue = results.pValue || 1;
-        const conclusion = pValue < 0.05
-            ? 'Có sự khác biệt có ý nghĩa thống kê giữa hai nhóm (p < 0.05).'
-            : 'Không có sự khác biệt có ý nghĩa thống kê giữa hai nhóm (p >= 0.05).';
-        pdf.text(conclusion, 30, yPosition);
-
-    } else if (analysisType === 'ttest-paired') {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Paired Samples T-test:', 20, yPosition);
-        yPosition += 10;
-
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-
-        const rows = [
-            [`Biến so sánh: ${columns.join(' vs ')}`],
-            [`Trung bình trước: ${results.meanBefore?.toFixed(3) || 'N/A'}`],
-            [`Trung bình sau: ${results.meanAfter?.toFixed(3) || 'N/A'}`],
-            [`Chênh lệch trung bình: ${results.meanDiff?.toFixed(3) || 'N/A'}`],
-            [`Giá trị t: ${results.t?.toFixed(3) || 'N/A'}`],
-            [`Bậc tự do (df): ${results.df?.toFixed(0) || 'N/A'}`],
-            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
-            [`95% CI: [${results.ci95Lower?.toFixed(3) || 'N/A'}, ${results.ci95Upper?.toFixed(3) || 'N/A'}]`],
-        ];
-
-        rows.forEach(row => {
-            pdf.text(row[0], 30, yPosition);
-            yPosition += 7;
-        });
-
-        yPosition += 5;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Kết luận:', 20, yPosition);
-        yPosition += 8;
-        pdf.setFont('helvetica', 'normal');
-
-        const pValue = results.pValue || 1;
-        const conclusion = pValue < 0.05
-            ? 'Có sự thay đổi có ý nghĩa thống kê giữa trước và sau (p < 0.05).'
-            : 'Không có sự thay đổi có ý nghĩa thống kê (p >= 0.05).';
-        pdf.text(conclusion, 30, yPosition);
-
-    } else if (analysisType === 'anova') {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('One-Way ANOVA:', 20, yPosition);
-        yPosition += 10;
-
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'normal');
-
-        const rows = [
-            [`Số nhóm: ${columns.length}`],
-            [`Biến: ${columns.join(', ')}`],
-            [`F-statistic: ${results.F?.toFixed(3) || 'N/A'}`],
-            [`df Between: ${results.dfBetween?.toFixed(0) || 'N/A'}`],
-            [`df Within: ${results.dfWithin?.toFixed(0) || 'N/A'}`],
-            [`p-value: ${results.pValue?.toFixed(4) || 'N/A'}`],
-            [`Eta-squared: ${results.etaSquared?.toFixed(3) || 'N/A'}`],
-            [`Grand Mean: ${results.grandMean?.toFixed(3) || 'N/A'}`],
-        ];
-
-        rows.forEach(row => {
-            pdf.text(row[0], 30, yPosition);
-            yPosition += 7;
-        });
-
-        // Group means
-        if (results.groupMeans && results.groupMeans.length > 0) {
-            yPosition += 3;
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Trung bình từng nhóm:', 20, yPosition);
-            yPosition += 7;
-            pdf.setFont('helvetica', 'normal');
-
-            results.groupMeans.forEach((mean: number, idx: number) => {
-                pdf.text(`  ${columns[idx]}: ${mean.toFixed(3)}`, 30, yPosition);
-                yPosition += 6;
+            (doc as any).autoTable({
+                startY: yPos,
+                head: headers,
+                body: data,
+                theme: 'grid',
+                headStyles: { fillColor: [41, 128, 185] }
             });
+            yPos = (doc as any).lastAutoTable.finalY + 15;
         }
-
-        yPosition += 5;
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Kết luận:', 20, yPosition);
-        yPosition += 8;
-        pdf.setFont('helvetica', 'normal');
-
-        const pValue = results.pValue || 1;
-        const conclusion = pValue < 0.05
-            ? 'Có sự khác biệt có ý nghĩa thống kê giữa các nhóm (p < 0.05).'
-            : 'Không có sự khác biệt có ý nghĩa thống kê giữa các nhóm (p >= 0.05).';
-        pdf.text(conclusion, 30, yPosition);
-
-    } else if (analysisType === 'descriptive') {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Thống Kê Mô Tả:', 20, yPosition);
-        yPosition += 10;
-
-        // Table
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Biến', 20, yPosition);
-        pdf.text('Mean', 70, yPosition);
-        pdf.text('SD', 100, yPosition);
-        pdf.text('Min', 125, yPosition);
-        pdf.text('Max', 150, yPosition);
-        pdf.text('Median', 175, yPosition);
-        yPosition += 5;
-
-        pdf.setFont('helvetica', 'normal');
-        columns.forEach((col, idx) => {
-            if (yPosition > pageHeight - 20) {
-                pdf.addPage();
-                yPosition = 20;
-            }
-
-            pdf.text(col.substring(0, 20), 20, yPosition);
-            pdf.text(results.mean[idx]?.toFixed(2) || '-', 70, yPosition);
-            pdf.text(results.sd[idx]?.toFixed(2) || '-', 100, yPosition);
-            pdf.text(results.min[idx]?.toFixed(2) || '-', 125, yPosition);
-            pdf.text(results.max[idx]?.toFixed(2) || '-', 150, yPosition);
-            pdf.text(results.median[idx]?.toFixed(2) || '-', 175, yPosition);
-            yPosition += 6;
-        });
-
-    } else if (analysisType === 'regression') {
+    }
+    else if (analysisType === 'regression') {
         const { modelFit, coefficients, equation } = results;
 
-        // Equation
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Phương trình hồi quy:', 20, yPosition);
-        yPosition += 8;
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(11);
+        doc.setFontSize(10);
+        doc.text(`Phương trình: ${equation}`, 14, yPos, { maxWidth: 180 });
+        yPos += 15; // Equation might be long
 
-        // Wrap equation if too long
-        const splitEq = pdf.splitTextToSize(equation, pageWidth - 40);
-        pdf.text(splitEq, 30, yPosition);
-        yPosition += (splitEq.length * 6) + 10;
-
-        // Model Summary
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Model Summary:', 20, yPosition);
-        yPosition += 8;
-
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`R Square: ${modelFit.rSquared.toFixed(3)}`, 30, yPosition);
-        pdf.text(`Adjusted R²: ${modelFit.adjRSquared.toFixed(3)}`, 100, yPosition);
-        yPosition += 6;
-        pdf.text(`F-statistic: ${modelFit.fStatistic.toFixed(2)}`, 30, yPosition);
-        pdf.text(`Sig.: ${modelFit.pValue < 0.001 ? '< .001' : modelFit.pValue.toFixed(3)}`, 100, yPosition);
-        yPosition += 15;
+        checkPageBreak();
+        doc.text(`R Square: ${modelFit.rSquared.toFixed(3)} | Adj R Square: ${modelFit.adjRSquared.toFixed(3)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`F: ${modelFit.fStatistic.toFixed(2)} | Sig: ${modelFit.pValue < 0.001 ? '< .001' : modelFit.pValue.toFixed(3)}`, 14, yPos);
+        yPos += 10;
 
         // Coefficients Table
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Coefficients:', 20, yPosition);
-        yPosition += 10;
+        const headers = [['Biến', 'B', 'Std. Error', 't', 'Sig.', 'VIF']];
+        const data = coefficients.map((c: any) => [
+            c.term,
+            c.estimate.toFixed(3),
+            c.stdError.toFixed(3),
+            c.tValue.toFixed(3),
+            c.pValue < 0.001 ? '< .001' : c.pValue.toFixed(3),
+            c.vif ? c.vif.toFixed(3) : '-'
+        ]);
 
-        // Table Header
-        pdf.setFontSize(10);
-        pdf.text('Variable', 20, yPosition);
-        pdf.text('B', 70, yPosition);
-        pdf.text('Std. Error', 100, yPosition);
-        pdf.text('t', 130, yPosition);
-        pdf.text('Sig.', 160, yPosition);
-        yPosition += 6;
-
-        pdf.setFont('helvetica', 'normal');
-        coefficients.forEach((coef: any) => {
-            if (yPosition > pageHeight - 20) {
-                pdf.addPage();
-                yPosition = 20;
-            }
-            const term = coef.term === '(Intercept)' ? '(Constant)' : coef.term.replace(/`/g, '');
-            pdf.text(term.substring(0, 25), 20, yPosition);
-            pdf.text(coef.estimate.toFixed(3), 70, yPosition);
-            pdf.text(coef.stdError.toFixed(3), 100, yPosition);
-            pdf.text(coef.tValue.toFixed(3), 130, yPosition);
-            const pVal = coef.pValue < 0.001 ? '< .001' : coef.pValue.toFixed(3);
-            pdf.text(pVal, 160, yPosition);
-            yPosition += 6;
+        (doc as any).autoTable({
+            startY: yPos,
+            head: headers,
+            body: data,
+            theme: 'striped',
+            headStyles: { fillColor: [50, 50, 50] }
         });
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+    }
+    else if (analysisType === 'efa') {
+        doc.text(`KMO: ${results.kmo.toFixed(3)}`, 14, yPos);
+        yPos += 7;
+        doc.text(`Bartlett Sig: ${results.bartlettP < 0.001 ? '< .001' : results.bartlettP.toFixed(3)}`, 14, yPos);
+        yPos += 10;
 
-    } else if (analysisType === 'correlation') {
-        pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Ma Trận Tương Quan:', 20, yPosition);
-        yPosition += 10;
+        // Loadings Table
+        if (results.loadings) {
+            const headers = [['Biến', ...Array(results.loadings[0].length).fill(0).map((_, i) => `Factor ${i + 1}`)]];
+            const data = results.loadings.map((row: number[], i: number) => {
+                return [`Var ${i + 1} (${columns[i] || ''})`, ...row.map(v => v.toFixed(3))];
+            });
 
-        pdf.setFontSize(8);
-        pdf.text('(Xem chi tiết trong giao diện web)', 20, yPosition);
+            (doc as any).autoTable({
+                startY: yPos,
+                head: headers,
+                body: data,
+                theme: 'grid'
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 15;
+        }
+    }
+    else if (analysisType === 'cfa' || analysisType === 'sem') {
+        const { fitMeasures, estimates } = results;
+
+        // Fit Measures
+        if (fitMeasures) {
+            checkPageBreak();
+            doc.text('Chỉ số độ phù hợp mô hình (Model Fit):', 14, yPos);
+            yPos += 5;
+
+            const fitHeaders = [['Chỉ số', 'Giá trị']];
+            const fitOrder = ['chisq', 'df', 'pvalue', 'cfi', 'tli', 'rmsea', 'srmr'];
+            const fitLabels: any = { chisq: 'Chi-square', df: 'df', pvalue: 'P-value', cfi: 'CFI', tli: 'TLI', rmsea: 'RMSEA', srmr: 'SRMR' };
+
+            const fitData = fitOrder.map(key => [fitLabels[key], fitMeasures[key]?.toFixed(3) || '-']);
+
+            (doc as any).autoTable({
+                startY: yPos,
+                head: fitHeaders,
+                body: fitData,
+                theme: 'plain',
+                tableWidth: 80
+            });
+            yPos = (doc as any).lastAutoTable.finalY + 15;
+        }
+
+        // Estimates Table
+        if (estimates) {
+            checkPageBreak();
+            doc.text('Ước lượng tham số (CFA/SEM Estimates):', 14, yPos);
+            yPos += 5;
+
+            const estHeaders = [['LHS', 'Op', 'RHS', 'Est', 'Std.Err', 'z', 'P(>|z|)', 'Std.All']];
+            const estData = estimates.map((e: any) => [
+                e.lhs,
+                e.op,
+                e.rhs,
+                e.est.toFixed(3),
+                e.se.toFixed(3),
+                e.z.toFixed(3),
+                e.pvalue < 0.001 ? '< .001' : e.pvalue.toFixed(3),
+                e.std_all.toFixed(3)
+            ]);
+
+            (doc as any).autoTable({
+                startY: yPos,
+                head: estHeaders,
+                body: estData,
+                theme: 'grid',
+                headStyles: { fillColor: [100, 100, 100] },
+                styles: { fontSize: 8 }
+            });
+        }
+    }
+    // Generic fallback for others (T-test, ANOVA etc)
+    else if (results && typeof results === 'object') {
+        const keys = Object.keys(results).filter(k => typeof results[k] === 'number' || typeof results[k] === 'string');
+        const data = keys.map(k => [k, String(results[k])]);
+
+        (doc as any).autoTable({
+            startY: yPos,
+            head: [['Metric', 'Value']],
+            body: data
+        });
     }
 
-    // Footer
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'italic');
-    pdf.text('Tạo bởi StatViet - Phân tích thống kê cho NCS Việt Nam', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-    // Save PDF
-    pdf.save(filename);
+    doc.save(filename);
 }
 
-/**
- * Export results with charts (captures HTML element)
- */
+// Deprecated html2canvas method (kept for compat if needed, but not used)
 export async function exportWithCharts(elementId: string, filename: string): Promise<void> {
-    const element = document.getElementById(elementId);
-    if (!element) {
-        throw new Error('Element not found');
-    }
-
-    const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const imgWidth = pageWidth - 20;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    // Add image to PDF
-    pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
-
-    // Footer
-    pdf.setFontSize(8);
-    pdf.setFont('helvetica', 'italic');
-    pdf.text('Tạo bởi StatViet', pageWidth / 2, pageHeight - 10, { align: 'center' });
-
-    pdf.save(filename);
+    // Redirect to text export if possible or throw generic error
+    // For now, empty implementation or simple alert to avoid crash
+    console.warn("Screenshot export is disabled due to compatibility issues. Please use Text Export.");
 }

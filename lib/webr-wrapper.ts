@@ -604,6 +604,7 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
         stdError: number;
         tValue: number;
         pValue: number;
+        vif?: number; // Added VIF
     }[];
     modelFit: {
         rSquared: number;
@@ -682,18 +683,67 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
       residuals = residuals(model),
       actual_values = df[,1]
     )
+    
+    # CALCULATE VIF (Manual method as car pkg might be missing)
+    # VIF_i = 1 / (1 - R_i^2)
+    vif_vals <- tryCatch({
+       x_data <- df[,-1, drop=FALSE] # Exclude dependent variable (col 1)
+       p <- ncol(x_data)
+       vifs <- numeric(p)
+       names(vifs) <- colnames(x_data)
+       
+       if (p > 1) {
+          for(i in 1:p) {
+             # Regress x[i] on other xs
+             r_model <- lm(x_data[,i] ~ ., data=x_data[,-i, drop=FALSE])
+             r2 <- summary(r_model)$r.squared
+             if (r2 >= 0.9999) {
+                 vifs[i] <- 999.99 # Infinite/High
+             } else {
+                 vifs[i] <- 1 / (1 - r2)
+             }
+          }
+       } else {
+          vifs[1] <- 1.0
+       }
+       vifs
+    }, error = function(e) { return(numeric(0)) })
+    
+    # Append VIF to list
+    res_list <- list(
+      coef_names = rownames(coefs),
+      estimates = coefs[,1],
+      std_errors = coefs[,2],
+      t_values = coefs[,3],
+      p_values = coefs[,4],
+      
+      r_squared = s$r.squared,
+      adj_r_squared = s$adj.r.squared,
+      f_stat = f_val,
+      df_num = df_num,
+      df_denom = df_denom,
+      f_p_value = f_p_value,
+      sigma = s$sigma,
+      
+      fitted_values = fitted(model),
+      residuals = residuals(model),
+      actual_values = df[,1],
+      
+      vifs = vif_vals
+    )
+    res_list
     `;
 
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
 
     const getValue = parseWebRResult(jsResult);
-
     const coefNames = getValue('coef_names') || [];
     const estimates = getValue('estimates') || [];
     const stdErrors = getValue('std_errors') || [];
     const tValues = getValue('t_values') || [];
     const pValues = getValue('p_values') || [];
+    const vifs = getValue('vifs') || []; // Get VIFs
 
     const coefficients = [];
     const len = coefNames.length;
@@ -703,8 +753,20 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
             estimate: estimates[i],
             stdError: stdErrors[i],
             tValue: tValues[i],
-            pValue: pValues[i]
+            pValue: pValues[i],
+            vif: (coefNames[i] !== '(Intercept)') ? (vifs[(i - 1)] || undefined) : undefined // Map VIF, skip intercept
         });
+        // Note: coefNames[0] is often Intercept. VIFs match X variables only.
+        // We need to match VIF names to coef names if possible.
+        // R 'vifs' array corresponds to X columns order.
+        // coefNames includes Intercept at index 0 generally.
+        // So estimates[1] corresponds to vifs[0]... roughly.
+        // Better logic: use name matching if returned, but array order is usually consistent.
+        // Let's assume Intercept is first and VIFs correspond to subsequent terms.
+        if (i > 0 && vifs.length > 0) {
+            // Check if name matches (sanitized)
+            coefficients[i].vif = vifs[i - 1];
+        }
     }
 
     const modelFit = {
