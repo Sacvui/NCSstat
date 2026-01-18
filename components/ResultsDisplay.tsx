@@ -36,18 +36,71 @@ interface ResultsDisplayProps {
     onProceedToSEM?: (factors: { name: string; indicators: string[] }[]) => void;
 }
 
-return (
-    <div className="space-y-8">
-        {display}
 
-        {/* R Syntax Viewer */}
-        {results?.rCode && (
-            <RSyntaxViewer code={results.rCode} />
-        )}
+export function ResultsDisplay({
+    results,
+    analysisType,
+    onProceedToEFA,
+    onProceedToCFA,
+    onProceedToSEM
+}: ResultsDisplayProps) {
 
-        <AIInterpretation analysisType={analysisType} results={results} />
-    </div>
-);
+    const display = useMemo(() => {
+        if (!results) return null;
+
+        switch (analysisType) {
+            case 'ttest-indep':
+                return <TTestResults results={results} columns={results.columns || []} />;
+            case 'ttest-paired':
+                return <PairedTTestResults results={results} columns={results.columns || []} />;
+            case 'anova':
+                return <ANOVAResults results={results} columns={results.columns || []} />;
+            case 'correlation':
+                return <CorrelationResults results={results} columns={results.columns || []} />;
+            case 'regression':
+                return <RegressionResults results={results} columns={results.columns || []} />;
+            case 'cronbach':
+                return <CronbachResults results={results} columns={results.columns || []} onProceedToEFA={onProceedToEFA} />;
+            case 'efa':
+                return <EFAResults results={results} columns={results.columns || []} onProceedToCFA={onProceedToCFA} />;
+            case 'cfa':
+                return <CFAResults results={results} onProceedToSEM={onProceedToSEM} />;
+            case 'sem':
+                return <SEMResults results={results} />;
+            case 'mann-whitney':
+                return <MannWhitneyResults results={results} />;
+            case 'chisquare':
+                return <ChiSquareResults results={results} />;
+            case 'descriptive':
+                return <DescriptiveResults results={results} columns={results.columns || []} />;
+            default:
+                return (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Analysis Logic Not Found</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <pre className="text-xs bg-slate-100 p-2 rounded">
+                                {JSON.stringify(results, null, 2)}
+                            </pre>
+                        </CardContent>
+                    </Card>
+                );
+        }
+    }, [results, analysisType, onProceedToEFA, onProceedToCFA, onProceedToSEM]);
+
+    return (
+        <div className="space-y-8">
+            {display}
+
+            {/* R Syntax Viewer */}
+            {results?.rCode && (
+                <RSyntaxViewer code={results.rCode} />
+            )}
+
+            <AIInterpretation analysisType={analysisType} results={results} />
+        </div>
+    );
 }
 
 // R Syntax Viewer Component
@@ -1304,6 +1357,28 @@ function CFAResults({ results, onProceedToSEM }: { results: any; onProceedToSEM?
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+// SEM Results Component (Placeholder implementation)
+function SEMResults({ results }: { results: any }) {
+    if (!results) return null;
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Structural Equation Modeling (SEM) Results</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="p-4 bg-slate-50 rounded-md border border-slate-200">
+                        <pre className="text-xs overflow-auto max-h-[500px]">
+                            {JSON.stringify(results, null, 2)}
+                        </pre>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
