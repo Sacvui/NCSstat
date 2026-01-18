@@ -43,6 +43,25 @@ export default function AnalyzePage() {
     // Workflow Mode State
     const [previousAnalysis, setPreviousAnalysis] = useState<PreviousAnalysisData | null>(null);
 
+    // Persist workflow state to sessionStorage
+    useEffect(() => {
+        if (previousAnalysis) {
+            sessionStorage.setItem('workflow_state', JSON.stringify(previousAnalysis));
+        }
+    }, [previousAnalysis]);
+
+    // Load workflow state on mount
+    useEffect(() => {
+        const saved = sessionStorage.getItem('workflow_state');
+        if (saved) {
+            try {
+                setPreviousAnalysis(JSON.parse(saved));
+            } catch (e) {
+                console.error('Failed to parse workflow state:', e);
+            }
+        }
+    }, []);
+
     // Auto-initialize WebR on page load (eager loading)
     useEffect(() => {
         const status = getWebRStatus();
@@ -76,6 +95,8 @@ export default function AnalyzePage() {
 
     const showToast = (message: string, type: 'success' | 'error' | 'info') => {
         setToast({ message, type });
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => setToast(null), 5000);
     };
 
     const handleAnalysisError = (err: any) => {
@@ -100,38 +121,45 @@ export default function AnalyzePage() {
         }
     };
 
-    // Workflow Mode Handlers
+    // Workflow Mode Handlers (with batched updates)
     const handleProceedToEFA = (goodItems: string[]) => {
-        setPreviousAnalysis({
-            type: 'cronbach',
-            variables: goodItems,
-            goodItems,
-            results: results?.data
+        // Batch state updates to reduce re-renders
+        Promise.resolve().then(() => {
+            setPreviousAnalysis({
+                type: 'cronbach',
+                variables: goodItems,
+                goodItems,
+                results: results?.data
+            });
+            setStep('efa-select');
+            showToast(`Chuyển sang EFA với ${goodItems.length} items tốt`, 'success');
         });
-        setStep('efa-select');
-        showToast(`Chuyển sang EFA với ${goodItems.length} items tốt`, 'success');
     };
 
     const handleProceedToCFA = (factors: { name: string; indicators: string[] }[]) => {
-        setPreviousAnalysis({
-            type: 'efa',
-            variables: factors.flatMap(f => f.indicators),
-            factors,
-            results: results?.data
+        Promise.resolve().then(() => {
+            setPreviousAnalysis({
+                type: 'efa',
+                variables: factors.flatMap(f => f.indicators),
+                factors,
+                results: results?.data
+            });
+            setStep('cfa-select');
+            showToast(`Chuyển sang CFA với ${factors.length} factors`, 'success');
         });
-        setStep('cfa-select');
-        showToast(`Chuyển sang CFA với ${factors.length} factors`, 'success');
     };
 
     const handleProceedToSEM = (factors: { name: string; indicators: string[] }[]) => {
-        setPreviousAnalysis({
-            type: 'cfa',
-            variables: factors.flatMap(f => f.indicators),
-            factors,
-            results: results?.data
+        Promise.resolve().then(() => {
+            setPreviousAnalysis({
+                type: 'cfa',
+                variables: factors.flatMap(f => f.indicators),
+                factors,
+                results: results?.data
+            });
+            setStep('sem-select');
+            showToast(`Chuyển sang SEM với measurement model đã xác nhận`, 'success');
         });
-        setStep('sem-select');
-        showToast(`Chuyển sang SEM với measurement model đã xác nhận`, 'success');
     };
 
     const handleDataLoaded = (loadedData: any[], fname: string) => {
@@ -287,15 +315,29 @@ export default function AnalyzePage() {
 
             showToast('Đang tạo PDF, vui lòng đợi...', 'info');
 
-            await exportToPDF({
-                title: `Phân tích ${analysisType}`,
-                analysisType,
-                results: results?.data || results,
-                columns: results?.columns || [],
-                filename: `statviet_${analysisType}_${Date.now()}.pdf`
-            });
-
-            showToast('Đã xuất PDF thành công!', 'success');
+            // Handle batch Cronbach export
+            if (analysisType === 'cronbach-batch' && multipleResults.length > 0) {
+                for (const r of multipleResults) {
+                    await exportToPDF({
+                        title: `Cronbach's Alpha - ${r.scaleName}`,
+                        analysisType: 'cronbach',
+                        results: r.data,
+                        columns: r.columns,
+                        filename: `cronbach_${r.scaleName.replace(/\s+/g, '_')}_${Date.now()}.pdf`
+                    });
+                }
+                showToast(`Đã xuất ${multipleResults.length} file PDF thành công!`, 'success');
+            } else {
+                // Single result export
+                await exportToPDF({
+                    title: `Phân tích ${analysisType}`,
+                    analysisType,
+                    results: results?.data || results,
+                    columns: results?.columns || [],
+                    filename: `statviet_${analysisType}_${Date.now()}.pdf`
+                });
+                showToast('Đã xuất PDF thành công!', 'success');
+            }
         } catch (error) {
             console.error(error);
             showToast('Lỗi xuất PDF: Vui lòng thử lại', 'error');

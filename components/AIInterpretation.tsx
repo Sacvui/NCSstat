@@ -12,11 +12,21 @@ export function AIInterpretation({ analysisType, results }: AIInterpretationProp
     const [explanation, setExplanation] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [cache, setCache] = useState<Map<string, string>>(new Map());
+    const [lastCallTime, setLastCallTime] = useState(0);
 
+    // Load API key from sessionStorage (more secure than localStorage)
     useEffect(() => {
-        const storedKey = localStorage.getItem('gemini_api_key');
+        const storedKey = sessionStorage.getItem('gemini_api_key');
         if (storedKey) setApiKey(storedKey);
     }, []);
+
+    // Save to sessionStorage when changed
+    useEffect(() => {
+        if (apiKey) {
+            sessionStorage.setItem('gemini_api_key', apiKey);
+        }
+    }, [apiKey]);
 
     const generateExplanation = async () => {
         if (!apiKey) {
@@ -24,8 +34,24 @@ export function AIInterpretation({ analysisType, results }: AIInterpretationProp
             return;
         }
 
+        // Rate limiting: 10s cooldown
+        const now = Date.now();
+        if (now - lastCallTime < 10000) {
+            setError('Vui lòng đợi 10 giây trước khi gọi AI lại (tránh spam).');
+            return;
+        }
+
+        // Check cache first
+        const cacheKey = JSON.stringify({ analysisType, results: results?.data || results });
+        if (cache.has(cacheKey)) {
+            setExplanation(cache.get(cacheKey)!);
+            setError(null);
+            return;
+        }
+
         setLoading(true);
         setError(null);
+        setLastCallTime(now);
 
         try {
             // Construct Prompt based on analysis type
@@ -61,6 +87,11 @@ export function AIInterpretation({ analysisType, results }: AIInterpretationProp
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Không nhận được phản hồi từ AI.';
 
             setExplanation(text);
+
+            // Cache the response
+            const newCache = new Map(cache);
+            newCache.set(cacheKey, text);
+            setCache(newCache);
         } catch (err: any) {
             setError(err.message || 'Có lỗi xảy ra khi gọi AI.');
         } finally {
