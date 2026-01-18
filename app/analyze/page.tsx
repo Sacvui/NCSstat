@@ -7,11 +7,12 @@ import { ResultsDisplay } from '@/components/ResultsDisplay';
 import { SmartGroupSelector, VariableSelector, AISettings } from '@/components/VariableSelector';
 import { profileData, DataProfile } from '@/lib/data-profiler';
 import { runCronbachAlpha, runCorrelation, runDescriptiveStats, runTTestIndependent, runTTestPaired, runOneWayANOVA, runEFA, runLinearRegression, runChiSquare, runMannWhitneyU, initWebR, getWebRStatus, setProgressCallback } from '@/lib/webr-wrapper';
-import { BarChart3, FileText, Shield, Trash2, Eye, EyeOff } from 'lucide-react';
+import { BarChart3, FileText, Shield, Trash2, Eye, EyeOff, Wifi, WifiOff } from 'lucide-react';
 import { Toast } from '@/components/ui/Toast';
 import { WebRStatus } from '@/components/WebRStatus';
 import { AnalysisSelector } from '@/components/AnalysisSelector';
 import { useAnalysisSession } from '@/hooks/useAnalysisSession';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { AnalysisStep } from '@/types/analysis';
 import { StepIndicator } from '@/components/ui/StepIndicator';
 import { Badge } from '@/components/ui/Badge';
@@ -43,6 +44,12 @@ export default function AnalyzePage() {
     // Workflow Mode State
     const [previousAnalysis, setPreviousAnalysis] = useState<PreviousAnalysisData | null>(null);
 
+    // Online/Offline detection
+    const { isOnline, wasOffline } = useOnlineStatus();
+
+    // Progress tracking
+    const [analysisProgress, setAnalysisProgress] = useState(0);
+
     // Persist workflow state to sessionStorage
     useEffect(() => {
         if (previousAnalysis) {
@@ -60,6 +67,25 @@ export default function AnalyzePage() {
                 console.error('Failed to parse workflow state:', e);
             }
         }
+    }, []);
+
+    // Handle online/offline events
+    useEffect(() => {
+        const handleOnline = () => {
+            showToast('Kết nối Internet đã được khôi phục!', 'success');
+        };
+
+        const handleOffline = () => {
+            showToast('Mất kết nối Internet. Một số tính năng có thể không hoạt động.', 'error');
+        };
+
+        window.addEventListener('app:online', handleOnline);
+        window.addEventListener('app:offline', handleOffline);
+
+        return () => {
+            window.removeEventListener('app:online', handleOnline);
+            window.removeEventListener('app:offline', handleOffline);
+        };
     }, []);
 
     // Auto-initialize WebR on page load (eager loading)
@@ -275,6 +301,7 @@ export default function AnalyzePage() {
     const runAnalysis = async (type: string) => {
         setIsAnalyzing(true);
         setAnalysisType(type);
+        let progressInterval: NodeJS.Timeout | undefined;
 
         try {
             const numericColumns = getNumericColumns();
@@ -285,11 +312,19 @@ export default function AnalyzePage() {
                 return;
             }
 
+            setAnalysisProgress(0);
+
+            // Progress simulation
+            progressInterval = setInterval(() => {
+                setAnalysisProgress(prev => Math.min(prev + 10, 90));
+            }, 300);
+
             const numericData = data.map(row =>
                 numericColumns.map(col => Number(row[col]) || 0)
             );
 
             let analysisResults;
+            setAnalysisProgress(30);
 
             switch (type) {
                 case 'correlation':
@@ -308,6 +343,9 @@ export default function AnalyzePage() {
                     throw new Error('Unknown analysis type');
             }
 
+            clearInterval(progressInterval);
+            setAnalysisProgress(100);
+
             setResults({
                 type,
                 data: analysisResults,
@@ -319,6 +357,7 @@ export default function AnalyzePage() {
             handleAnalysisError(error);
         } finally {
             setIsAnalyzing(false);
+            setAnalysisProgress(0);
         }
     };
 
@@ -408,6 +447,26 @@ export default function AnalyzePage() {
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50">
             {/* Toast Notification */}
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+            {/* Offline Warning Banner */}
+            {!isOnline && (
+                <div className="fixed top-0 left-0 right-0 bg-red-600 text-white py-2 px-4 text-center z-50 flex items-center justify-center gap-2">
+                    <WifiOff className="w-5 h-5" />
+                    <span className="font-semibold">Không có kết nối Internet. Một số tính năng có thể không hoạt động.</span>
+                </div>
+            )}
+
+            {/* Analysis Progress Bar */}
+            {isAnalyzing && analysisProgress > 0 && (
+                <div className="fixed top-0 left-0 right-0 z-40">
+                    <div className="h-1 bg-blue-200">
+                        <div
+                            className="h-full bg-blue-600 transition-all duration-300"
+                            style={{ width: `${analysisProgress}%` }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Header */}
             <header className="bg-white shadow-sm border-b border-slate-200">
