@@ -30,21 +30,25 @@ interface ResultsDisplayProps {
     analysisType: string;
     results: any;
     columns: string[];
+    // Workflow handlers
+    onProceedToEFA?: (goodItems: string[]) => void;
+    onProceedToCFA?: (factors: { name: string; indicators: string[] }[]) => void;
+    onProceedToSEM?: (factors: { name: string; indicators: string[] }[]) => void;
 }
 
-export function ResultsDisplay({ analysisType, results, columns }: ResultsDisplayProps) {
+export function ResultsDisplay({ analysisType, results, columns, onProceedToEFA, onProceedToCFA, onProceedToSEM }: ResultsDisplayProps) {
     const display = (() => {
-        if (analysisType === 'cronbach') return <CronbachResults results={results} columns={columns} />;
+        if (analysisType === 'cronbach') return <CronbachResults results={results} columns={columns} onProceedToEFA={onProceedToEFA} />;
         if (analysisType === 'correlation') return <CorrelationResults results={results} columns={columns} />;
         if (analysisType === 'descriptive') return <DescriptiveResults results={results} columns={columns} />;
         if (analysisType === 'ttest') return <TTestResults results={results} columns={columns} />;
         if (analysisType === 'ttest-paired') return <PairedTTestResults results={results} columns={columns} />;
         if (analysisType === 'anova') return <ANOVAResults results={results} columns={columns} />;
-        if (analysisType === 'efa') return <EFAResults results={results} columns={columns} />;
+        if (analysisType === 'efa') return <EFAResults results={results} columns={columns} onProceedToCFA={onProceedToCFA} />;
         if (analysisType === 'regression') return <RegressionResults results={results} columns={columns} />;
         if (analysisType === 'chisq') return <ChiSquareResults results={results} />;
         if (analysisType === 'mannwhitney') return <MannWhitneyResults results={results} />;
-        if (analysisType === 'cfa' || analysisType === 'sem') return <CFAResults results={results} />;
+        if (analysisType === 'cfa' || analysisType === 'sem') return <CFAResults results={results} onProceedToSEM={onProceedToSEM} />;
         return null;
     })();
 
@@ -209,10 +213,15 @@ function ANOVAResults({ results, columns }: { results: any; columns: string[] })
     );
 }
 
-function CronbachResults({ results, columns }: { results: any; columns?: string[] }) {
+function CronbachResults({ results, columns, onProceedToEFA }: { results: any; columns?: string[]; onProceedToEFA?: (goodItems: string[]) => void }) {
     const alpha = results.alpha || results.rawAlpha || 0;
     const nItems = results.nItems || 'N/A';
     const itemTotalStats = results.itemTotalStats || [];
+
+    // Extract good items for workflow
+    const goodItems = itemTotalStats
+        .filter((item: any) => item.correctedItemTotalCorrelation >= 0.3)
+        .map((item: any, idx: number) => columns?.[idx] || item.itemName);
 
     // SPSS Style Table Component
     const SPSSTable = ({ title, children }: { title: string, children: React.ReactNode }) => (
@@ -315,6 +324,31 @@ function CronbachResults({ results, columns }: { results: any; columns?: string[
                     </div>
                 </div>
             </div>
+
+            {/* Workflow: Next Step Button */}
+            {goodItems.length >= 4 && onProceedToEFA && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 p-6 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl">
+                            📊
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-bold text-blue-900 mb-2 text-lg">Bước tiếp theo được đề xuất</h4>
+                            <p className="text-sm text-blue-700 mb-4">
+                                Bạn có <strong>{goodItems.length} items đạt chuẩn</strong> (Corrected Item-Total Correlation ≥ 0.3).
+                                Tiếp tục với <strong>EFA (Exploratory Factor Analysis)</strong> để khám phá cấu trúc nhân tố tiềm ẩn?
+                            </p>
+                            <button
+                                onClick={() => onProceedToEFA(goodItems)}
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                            >
+                                <span>Chạy EFA với {goodItems.length} items tốt</span>
+                                <span className="text-xl">→</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -543,11 +577,34 @@ function PairedTTestResults({ results, columns }: { results: any; columns: strin
 }
 
 // EFA Results Component
-function EFAResults({ results, columns }: { results: any; columns: string[] }) {
+function EFAResults({ results, columns, onProceedToCFA }: { results: any; columns: string[]; onProceedToCFA?: (factors: { name: string; indicators: string[] }[]) => void }) {
     const kmo = results.kmo || 0;
     const bartlettP = results.bartlettP || 1;
     const kmoAcceptable = kmo >= 0.6;
     const bartlettSignificant = bartlettP < 0.05;
+
+    // Extract factor structure for workflow
+    const extractFactors = () => {
+        if (!results.loadings || !Array.isArray(results.loadings[0])) return [];
+
+        const factors = [];
+        const nFactors = results.loadings[0].length;
+
+        for (let f = 0; f < nFactors; f++) {
+            const indicators = columns.filter((col, i) =>
+                results.loadings[i] && results.loadings[i][f] >= 0.5
+            );
+            if (indicators.length >= 3) {
+                factors.push({
+                    name: `Factor${f + 1}`,
+                    indicators
+                });
+            }
+        }
+        return factors;
+    };
+
+    const suggestedFactors = extractFactors();
 
     return (
         <div className="space-y-6">
@@ -673,6 +730,31 @@ function EFAResults({ results, columns }: { results: any; columns: string[] }) {
                     )}
                 </div>
             </div>
+
+            {/* Workflow: Next Step Button */}
+            {suggestedFactors.length > 0 && onProceedToCFA && kmoAcceptable && bartlettSignificant && (
+                <div className="bg-gradient-to-r from-green-50 to-teal-50 border-2 border-green-300 p-6 rounded-xl shadow-sm">
+                    <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white text-2xl">
+                            ✓
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-bold text-green-900 mb-2 text-lg">Bước tiếp theo được đề xuất</h4>
+                            <p className="text-sm text-green-700 mb-4">
+                                EFA đã khám phá được <strong>{suggestedFactors.length} factors</strong> với cấu trúc rõ ràng (loadings ≥ 0.5).
+                                Tiếp tục với <strong>CFA (Confirmatory Factor Analysis)</strong> để xác nhận mô hình này?
+                            </p>
+                            <button
+                                onClick={() => onProceedToCFA(suggestedFactors)}
+                                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                            >
+                                <span>Xác nhận bằng CFA ({suggestedFactors.length} factors)</span>
+                                <span className="text-xl">→</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

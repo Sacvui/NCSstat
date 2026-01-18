@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/Badge';
 import CFASelection from '@/components/CFASelection';
 import SEMSelection from '@/components/SEMSelection';
 import { runCFA, runSEM } from '@/lib/webr-wrapper';
+import type { PreviousAnalysisData } from '@/types/analysis';
 
 export default function AnalyzePage() {
     // Session State Management
@@ -38,6 +39,9 @@ export default function AnalyzePage() {
     // Local ephemeral state
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+    // Workflow Mode State
+    const [previousAnalysis, setPreviousAnalysis] = useState<PreviousAnalysisData | null>(null);
 
     // Auto-initialize WebR on page load (eager loading)
     useEffect(() => {
@@ -94,6 +98,40 @@ export default function AnalyzePage() {
             // Translate common R errors if possible
             showToast(`Lỗi: ${msg.replace('Error in', '').substring(0, 100)}...`, 'error');
         }
+    };
+
+    // Workflow Mode Handlers
+    const handleProceedToEFA = (goodItems: string[]) => {
+        setPreviousAnalysis({
+            type: 'cronbach',
+            variables: goodItems,
+            goodItems,
+            results: results?.data
+        });
+        setStep('efa-select');
+        showToast(`Chuyển sang EFA với ${goodItems.length} items tốt`, 'success');
+    };
+
+    const handleProceedToCFA = (factors: { name: string; indicators: string[] }[]) => {
+        setPreviousAnalysis({
+            type: 'efa',
+            variables: factors.flatMap(f => f.indicators),
+            factors,
+            results: results?.data
+        });
+        setStep('cfa-select');
+        showToast(`Chuyển sang CFA với ${factors.length} factors`, 'success');
+    };
+
+    const handleProceedToSEM = (factors: { name: string; indicators: string[] }[]) => {
+        setPreviousAnalysis({
+            type: 'cfa',
+            variables: factors.flatMap(f => f.indicators),
+            factors,
+            results: results?.data
+        });
+        setStep('sem-select');
+        showToast(`Chuyển sang SEM với measurement model đã xác nhận`, 'success');
     };
 
     const handleDataLoaded = (loadedData: any[], fname: string) => {
