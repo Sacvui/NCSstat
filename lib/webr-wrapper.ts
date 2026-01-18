@@ -3,6 +3,7 @@ import { WebR } from 'webr';
 
 let webRInstance: WebR | null = null;
 let isInitializing = false;
+let initPromise: Promise<WebR> | null = null;
 let initProgress: string = '';
 let onProgressCallback: ((msg: string) => void) | null = null;
 
@@ -26,11 +27,11 @@ function updateProgress(msg: string) {
 }
 
 /**
- * Initialize WebR instance (singleton)
+ * Initialize WebR instance (singleton with promise caching)
  */
 export async function initWebR(): Promise<WebR> {
+    // Return existing instance
     if (webRInstance) {
-        // Validate that the instance is actually usable
         try {
             if (typeof webRInstance.evalR === 'function') {
                 return webRInstance;
@@ -39,6 +40,11 @@ export async function initWebR(): Promise<WebR> {
             console.warn('WebR instance exists but is not usable, reinitializing...');
             webRInstance = null;
         }
+    }
+
+    // Return existing promise if init in progress
+    if (initPromise) {
+        return initPromise;
     }
 
     if (isInitializing) {
@@ -57,39 +63,53 @@ export async function initWebR(): Promise<WebR> {
     isInitializing = true;
     updateProgress('Đang khởi tạo WebR...');
 
-    try {
-        webRInstance = new WebR({
-            channelType: 1, // PostMessage channel
-        });
-
-        updateProgress('Đang tải R runtime...');
-        await webRInstance.init();
-
-        // Verify initialization
-        if (!webRInstance.evalR) {
-            throw new Error('WebR initialized but evalR is not available');
-        }
-
-        // Install required packages
-        updateProgress('Đang cài đặt packages (psych, lavaan)...');
+    initPromise = (async () => {
         try {
-            await webRInstance.installPackages(['psych', 'lavaan', 'corrplot']);
-        } catch (pkgError) {
-            console.warn('Package installation failed, continuing anyway:', pkgError);
+            const webR = new WebR({
+                channelType: 1, // PostMessage channel
+            });
+
+            updateProgress('Đang tải R runtime...');
+            await webR.init();
+
+            // Verify initialization
+            if (!webR.evalR) {
+                throw new Error('WebR initialized but evalR is not available');
+            }
+
+            // Install required packages
+            updateProgress('Đang cài đặt packages (psych, lavaan)...');
+            try {
+                await webR.installPackages(['psych', 'lavaan', 'corrplot', 'GPArotation']);
+
+                // Load packages in parallel for faster init
+                updateProgress('Đang load packages...');
+                await Promise.all([
+                    webR.evalR('library(psych)'),
+                    webR.evalR('library(lavaan)'),
+                    webR.evalR('library(GPArotation)')
+                ]);
+            } catch (pkgError) {
+                console.warn('Package installation failed, continuing anyway:', pkgError);
+            }
+
+            updateProgress('Sẵn sàng!');
+            webRInstance = webR;
+            isInitializing = false;
+            initPromise = null;
+            return webR;
+        } catch (error) {
+            isInitializing = false;
+            webRInstance = null;
+            initPromise = null;
+            updateProgress('Lỗi khởi tạo!');
+            console.error('WebR initialization error:', error);
+            throw new Error(`Failed to initialize WebR: ${error}`);
         }
+    })();
 
-        updateProgress('Sẵn sàng!');
-        isInitializing = false;
-        return webRInstance;
-    } catch (error) {
-        isInitializing = false;
-        webRInstance = null;
-        updateProgress('Lỗi khởi tạo!');
-        console.error('WebR initialization error:', error);
-        throw new Error(`Failed to initialize WebR: ${error}`);
-    }
+    return initPromise;
 }
-
 /**
  * Helper to parse WebR evaluation result (list) into a getter function
  */
@@ -583,13 +603,39 @@ export async function runOneWayANOVA(groups: number[][]): Promise<{
 
     return {
         F: getValue('F')?.[0] || 0,
-        dfBetween: getValue('dfBetween')?.[0] || 0,
-        dfWithin: getValue('dfWithin')?.[0] || 0,
-        pValue: getValue('pValue')?.[0] || 0,
-        groupMeans: getValue('groupMeans') || [],
-        grandMean: getValue('grandMean')?.[0] || 0,
         etaSquared: getValue('etaSquared')?.[0] || 0
     };
+}
+
+/**
+ * Data Validation Helper
+ */
+function validateData(data: number[][], minVars: number = 1, functionName: string = 'Analysis'): void {
+    if (!data || data.length === 0) {
+        throw new Error(`${functionName}: Dữ liệu trống`);
+    }
+
+    if (data[0].length < minVars) {
+        throw new Error(`${functionName}: Cần ít nhất ${minVars} biến`);
+    }
+
+    // Check for invalid values (NaN, Infinity)
+    const hasInvalid = data.some(row =>
+        row.some(val => !isFinite(val))
+    );
+
+    if (hasInvalid) {
+        throw new Error(`${functionName}: Dữ liệu chứa giá trị không hợp lệ (NaN hoặc Infinity)`);
+    }
+
+    // Check for constant columns (zero variance)
+    for (let col = 0; col < data[0].length; col++) {
+        const values = data.map(row => row[col]);
+        const allSame = values.every(v => v === values[0]);
+        if (allSame) {
+            throw new Error(`${functionName}: Biến thứ ${col + 1} có giá trị không đổi (variance = 0)`);
+        }
+    }
 }
 
 /**
