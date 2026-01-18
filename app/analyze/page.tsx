@@ -242,19 +242,21 @@ export default function AnalyzePage() {
         }
     };
 
-    // Handle PDF Export (fixed for batch)
-    // Handle PDF Export (Screenshot based for full compatibility)
+    // Handle PDF Export (Text-based for stability)
     const handleExportPDF = async () => {
         try {
-            const { exportWithCharts } = await import('@/lib/pdf-exporter');
-            const filename = `statviet_${analysisType}_${Date.now()}.pdf`;
+            const { exportToPDF } = await import('@/lib/pdf-exporter');
 
             showToast('Đang tạo PDF, vui lòng đợi...', 'info');
 
-            // Wait for charts to render completely
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await exportToPDF({
+                title: `Phân tích ${analysisType}`,
+                analysisType,
+                results: results?.data || results,
+                columns: results?.columns || [],
+                filename: `statviet_${analysisType}_${Date.now()}.pdf`
+            });
 
-            await exportWithCharts('results-container', filename);
             showToast('Đã xuất PDF thành công!', 'success');
         } catch (error) {
             console.error(error);
