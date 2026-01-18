@@ -215,11 +215,15 @@ export async function exportToPDF(options: PDFExportOptions): Promise<void> {
         }
 
         doc.save(filename);
+    } catch (error) {
+        console.error("PDF Export Error:", error);
+        // Simple fallback
     }
+}
 
 // Deprecated html2canvas method (kept for compat if needed, but not used)
 export async function exportWithCharts(elementId: string, filename: string): Promise<void> {
-        // Redirect to text export if possible or throw generic error
-        // For now, empty implementation or simple alert to avoid crash
-        console.warn("Screenshot export is disabled due to compatibility issues. Please use Text Export.");
-    }
+    // Redirect to text export if possible or throw generic error
+    // For now, empty implementation or simple alert to avoid crash
+    console.warn("Screenshot export is disabled due to compatibility issues. Please use Text Export.");
+}

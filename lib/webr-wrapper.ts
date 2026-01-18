@@ -169,6 +169,7 @@ export async function runCronbachAlpha(data: number[][]): Promise<{
         correctedItemTotalCorrelation: number;
         alphaIfItemDeleted: number;
     }[];
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -231,7 +232,9 @@ export async function runCronbachAlpha(data: number[][]): Promise<{
         rawAlpha: rawAlpha,
         standardizedAlpha: stdAlpha,
         nItems: nItems,
-        itemTotalStats: itemTotalStats
+        nItems: nItems,
+        itemTotalStats: itemTotalStats,
+        rCode: rCode
     };
 }
 
@@ -244,6 +247,7 @@ export async function runEFA(data: number[][], nfactors: number): Promise<{
     loadings: any;
     variance: any;
     communalities: any;
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -308,7 +312,8 @@ export async function runEFA(data: number[][], nfactors: number): Promise<{
         bartlettP: getValue('bartlett_p')?.[0] || 0,
         loadings: loadings,
         variance: getValue('variance'), // This is likely fine as flat array or simple list
-        communalities: getValue('communalities')
+        communalities: getValue('communalities'),
+        rCode: rCode
     };
 }
 
@@ -318,6 +323,7 @@ export async function runEFA(data: number[][], nfactors: number): Promise<{
 export async function runCorrelation(data: number[][]): Promise<{
     correlationMatrix: number[][];
     pValues: number[][];
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -375,7 +381,9 @@ export async function runCorrelation(data: number[][]): Promise<{
 
     return {
         correlationMatrix: parseMatrix(getValue('correlation'), numCols),
-        pValues: parseMatrix(getValue('p_values'), numCols)
+        correlationMatrix: parseMatrix(getValue('correlation'), numCols),
+        pValues: parseMatrix(getValue('p_values'), numCols),
+        rCode: rCode
     };
 }
 
@@ -468,6 +476,7 @@ export async function runTTestIndependent(group1: number[], group2: number[]): P
     ci95Lower: number;
     ci95Upper: number;
     effectSize: number; // Cohen's d
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -490,9 +499,9 @@ export async function runTTestIndependent(group1: number[], group2: number[]): P
       meanDiff = mean(group1) - mean(group2),
       ci95Lower = result$conf.int[1],
       ci95Upper = result$conf.int[2],
-      cohensD = cohensD
+      effectSize = cohensD
     )
-  `;
+    `;
 
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
@@ -512,7 +521,8 @@ export async function runTTestIndependent(group1: number[], group2: number[]): P
         meanDiff: getValue('meanDiff'),
         ci95Lower: getValue('ci95Lower'),
         ci95Upper: getValue('ci95Upper'),
-        effectSize: getValue('cohensD')
+        effectSize: getValue('effectSize'),
+        rCode: rCode
     };
 }
 
@@ -532,20 +542,20 @@ export async function runTTestPaired(before: number[], after: number[]): Promise
     const webR = await initWebR();
 
     const rCode = `
-    before <- c(${before.join(',')})
-    after <- c(${after.join(',')})
-    
-    result <- t.test(before, after, paired = TRUE)
-    
+    before < - c(${before.join(',')})
+    after < - c(${after.join(',')})
+
+    result < - t.test(before, after, paired = TRUE)
+
     list(
-      t = result$statistic,
-      df = result$parameter,
-      pValue = result$p.value,
-      meanBefore = mean(before),
-      meanAfter = mean(after),
-      meanDiff = mean(before - after),
-      ci95Lower = result$conf.int[1],
-      ci95Upper = result$conf.int[2]
+        t = result$statistic,
+        df = result$parameter,
+        pValue = result$p.value,
+        meanBefore = mean(before),
+        meanAfter = mean(after),
+        meanDiff = mean(before - after),
+        ci95Lower = result$conf.int[1],
+        ci95Upper = result$conf.int[2]
     )
   `;
 
@@ -566,7 +576,8 @@ export async function runTTestPaired(before: number[], after: number[]): Promise
         meanAfter: getValue('meanAfter'),
         meanDiff: getValue('meanDiff'),
         ci95Lower: getValue('ci95Lower'),
-        ci95Upper: getValue('ci95Upper')
+        ci95Upper: getValue('ci95Upper'),
+        rCode: rCode
     };
 }
 
@@ -581,6 +592,7 @@ export async function runOneWayANOVA(groups: number[][]): Promise<{
     groupMeans: number[];
     grandMean: number;
     etaSquared: number;
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -591,31 +603,31 @@ export async function runOneWayANOVA(groups: number[][]): Promise<{
 
     const rCode = `
     # Create data frame with values and group labels
-    values <- c(${groups.map(g => g.join(',')).join(',')})
-    groups <- factor(c(${groups.map((g, i) => g.map(() => i + 1).join(',')).join(',')}))
+values < - c(${groups.map(g => g.join(',')).join(',')})
+groups < - factor(c(${groups.map((g, i) => g.map(() => i + 1).join(',')).join(',')}))
     
     # Run ANOVA
-    model <- aov(values ~ groups)
-    result <- summary(model)[[1]]
+model < - aov(values ~groups)
+result < - summary(model)[[1]]
     
     # Calculate eta squared
-    ssb <- result[1, 2]  # Sum of squares between
-    sst <- ssb + result[2, 2]  # Total sum of squares
-    etaSquared <- ssb / sst
+ssb < - result[1, 2]  # Sum of squares between
+sst < - ssb + result[2, 2]  # Total sum of squares
+etaSquared < - ssb / sst
     
     # Group means
-    groupMeans <- tapply(values, groups, mean)
-    
-    list(
-      F = result[1, 4],
-      dfBetween = result[1, 1],
-      dfWithin = result[2, 1],
-      pValue = result[1, 5],
-      groupMeans = as.numeric(groupMeans),
-      grandMean = mean(values),
-      etaSquared = etaSquared
-    )
-  `;
+groupMeans < - tapply(values, groups, mean)
+
+list(
+    F = result[1, 4],
+    dfBetween = result[1, 1],
+    dfWithin = result[2, 1],
+    pValue = result[1, 5],
+    groupMeans = as.numeric(groupMeans),
+    grandMean = mean(values),
+    etaSquared = etaSquared
+)
+    `;
 
     const result = await webR.evalR(rCode);
     const jsResult = await result.toJs() as any;
@@ -629,7 +641,60 @@ export async function runOneWayANOVA(groups: number[][]): Promise<{
         pValue: getValue('pValue')?.[0] || 0,
         groupMeans: getValue('groupMeans') || [],
         grandMean: getValue('grandMean')?.[0] || 0,
-        etaSquared: getValue('etaSquared')?.[0] || 0
+        etaSquared: getValue('etaSquared')?.[0] || 0,
+        rCode
+    };
+}
+
+/**
+ * Run Exploratory Factor Analysis (EFA)
+ */
+export async function runEFA(data: number[][], nFactors: number): Promise<{
+    kmo: number;
+    bartlettP: number;
+    loadings: number[][];
+    communalities: number[];
+    structure: number[][];
+    rCode: string;
+}> {
+    const webR = await initWebR();
+
+    const rCode = `
+    # Load psych package for EFA
+    library(psych)
+
+    # Convert JS array of arrays to R matrix
+data_mat < - matrix(c(${data.flat().join(',')}), nrow = ${data.length}, byrow = TRUE)
+    
+    # KMO and Bartlett's Test
+kmo_result < - KMO(data_mat)
+bartlett_result < - cortest.bartlett(cor(data_mat), n = ${data.length})
+    
+    # Perform EFA using principal axis factoring (fa = "pa") with varimax rotation
+    # nfactors is the number of factors to extract
+efa_result < - fa(data_mat, nfactors = ${nFactors}, rotate = "varimax", fm = "pa")
+
+list(
+    kmo = kmo_result$MSA[1], # Overall MSA
+      bartlett_p = bartlett_result$p.value,
+    loadings = efa_result$loadings,
+    communalities = efa_result$communalities,
+    structure = efa_result$Structure
+)
+  `;
+
+    const result = await webR.evalR(rCode);
+    const jsResult = await result.toJs() as any;
+
+    const getValue = parseWebRResult(jsResult);
+
+    return {
+        kmo: getValue('kmo')?.[0] || 0,
+        bartlettP: getValue('bartlett_p')?.[0] || 1,
+        loadings: parseMatrix(getValue('loadings'), getValue('n_factors')?.[0] || 0),
+        communalities: getValue('communalities') || [],
+        structure: parseMatrix(getValue('structure'), getValue('n_factors')?.[0] || 0),
+        rCode
     };
 }
 
@@ -651,7 +716,7 @@ function validateData(data: number[][], minVars: number = 1, functionName: strin
     );
 
     if (hasInvalid) {
-        throw new Error(`${functionName}: Dữ liệu chứa giá trị không hợp lệ (NaN hoặc Infinity)`);
+        throw new Error(`${functionName}: Dữ liệu chứa giá trị không hợp lệ(NaN hoặc Infinity)`);
     }
 
     // Check for constant columns (zero variance)
@@ -659,7 +724,7 @@ function validateData(data: number[][], minVars: number = 1, functionName: strin
         const values = data.map(row => row[col]);
         const allSame = values.every(v => v === values[0]);
         if (allSame) {
-            throw new Error(`${functionName}: Biến thứ ${col + 1} có giá trị không đổi (variance = 0)`);
+            throw new Error(`${functionName}: Biến thứ ${col + 1} có giá trị không đổi(variance = 0)`);
         }
     }
 }
@@ -693,6 +758,7 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
         residuals: number[];
         actual: number[];
     };
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -703,107 +769,107 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
 
     // Construct R command
     const rCode = `
-    data_mat <- ${arrayToRMatrix(data)}
-    df <- as.data.frame(data_mat)
+data_mat < - ${arrayToRMatrix(data)}
+df < - as.data.frame(data_mat)
     # Assign names
-    colnames(df) <- c(${names.map(n => `"${n}"`).join(',')})
+colnames(df) < - c(${names.map(n => `"${n}"`).join(',')})
     
     # Formula: First col ~ . (all others)
     # We must quote names in formula if they have special chars
-    y_name <- colnames(df)[1]
-    f_str <- paste(sprintf("\`%s\`", y_name), "~ .")
-    f <- as.formula(f_str)
-    
-    model <- lm(f, data = df)
-    s <- summary(model)
+y_name < - colnames(df)[1]
+f_str < - paste(sprintf("\`%s\`", y_name), "~ .")
+f < - as.formula(f_str)
+
+model < - lm(f, data = df)
+s < - summary(model)
     
     # Extract Coefficients
-    coefs <- coef(s)
+coefs < - coef(s)
     
     # Extract Model Fit
-    fstat <- s$fstatistic
+fstat < - s$fstatistic
     
-    # Calculate p-value for F-statistic
+    # Calculate p - value for F - statistic
     if (is.null(fstat)) {
-       f_val <- 0
-       df_num <- 0
-       df_denom <- 0
-       f_p_value <- 1
+        f_val < - 0
+        df_num < - 0
+        df_denom < - 0
+        f_p_value < - 1
     } else {
-       f_val <- fstat[1]
-       df_num <- fstat[2]
-       df_denom <- fstat[3]
-       f_p_value <- pf(f_val, df_num, df_denom, lower.tail=FALSE)
+        f_val < - fstat[1]
+        df_num < - fstat[2]
+        df_denom < - fstat[3]
+        f_p_value < - pf(f_val, df_num, df_denom, lower.tail = FALSE)
     }
 
-    list(
-      coef_names = rownames(coefs),
-      estimates = coefs[,1],
-      std_errors = coefs[,2],
-      t_values = coefs[,3],
-      p_values = coefs[,4],
-      
-      r_squared = s$r.squared,
-      adj_r_squared = s$adj.r.squared,
-      f_stat = f_val,
-      df_num = df_num,
-      df_denom = df_denom,
-      f_p_value = f_p_value,
-      sigma = s$sigma,
-      
-      fitted_values = fitted(model),
-      residuals = residuals(model),
-      actual_values = df[,1]
-    )
+list(
+    coef_names = rownames(coefs),
+    estimates = coefs[, 1],
+    std_errors = coefs[, 2],
+    t_values = coefs[, 3],
+    p_values = coefs[, 4],
+
+    r_squared = s$r.squared,
+    adj_r_squared = s$adj.r.squared,
+    f_stat = f_val,
+    df_num = df_num,
+    df_denom = df_denom,
+    f_p_value = f_p_value,
+    sigma = s$sigma,
+
+    fitted_values = fitted(model),
+    residuals = residuals(model),
+    actual_values = df[, 1]
+)
     
-    # CALCULATE VIF (Manual method as car pkg might be missing)
-    # VIF_i = 1 / (1 - R_i^2)
-    vif_vals <- tryCatch({
-       x_data <- df[,-1, drop=FALSE] # Exclude dependent variable (col 1)
-       p <- ncol(x_data)
-       vifs <- numeric(p)
-       names(vifs) <- colnames(x_data)
+    # CALCULATE VIF(Manual method as car pkg might be missing)
+    # VIF_i = 1 / (1 - R_i ^ 2)
+vif_vals < - tryCatch({
+    x_data<- df[, -1, drop = FALSE] # Exclude dependent variable(col 1)
+       p < - ncol(x_data)
+       vifs < - numeric(p)
+       names(vifs) < - colnames(x_data)
        
        if (p > 1) {
-          for(i in 1:p) {
+    for (i in 1:p) {
              # Regress x[i] on other xs
-             r_model <- lm(x_data[,i] ~ ., data=x_data[,-i, drop=FALSE])
-             r2 <- summary(r_model)$r.squared
-             if (r2 >= 0.9999) {
-                 vifs[i] <- 999.99 # Infinite/High
-             } else {
-                 vifs[i] <- 1 / (1 - r2)
-             }
-          }
-       } else {
-          vifs[1] <- 1.0
-       }
-       vifs
-    }, error = function(e) { return(numeric(0)) })
+        r_model < - lm(x_data[, i] ~ ., data = x_data[, -i, drop = FALSE])
+        r2 < - summary(r_model)$r.squared
+        if (r2 >= 0.9999) {
+            vifs[i] < - 999.99 # Infinite / High
+        } else {
+            vifs[i] < - 1 / (1 - r2)
+        }
+    }
+} else {
+    vifs[1] < - 1.0
+}
+vifs
+    }, error = function (e) { return (numeric(0)) })
     
     # Append VIF to list
-    res_list <- list(
-      coef_names = rownames(coefs),
-      estimates = coefs[,1],
-      std_errors = coefs[,2],
-      t_values = coefs[,3],
-      p_values = coefs[,4],
-      
-      r_squared = s$r.squared,
-      adj_r_squared = s$adj.r.squared,
-      f_stat = f_val,
-      df_num = df_num,
-      df_denom = df_denom,
-      f_p_value = f_p_value,
-      sigma = s$sigma,
-      
-      fitted_values = fitted(model),
-      residuals = residuals(model),
-      actual_values = df[,1],
-      
-      vifs = vif_vals
-    )
-    res_list
+res_list < - list(
+    coef_names = rownames(coefs),
+    estimates = coefs[, 1],
+    std_errors = coefs[, 2],
+    t_values = coefs[, 3],
+    p_values = coefs[, 4],
+
+    r_squared = s$r.squared,
+    adj_r_squared = s$adj.r.squared,
+    f_stat = f_val,
+    df_num = df_num,
+    df_denom = df_denom,
+    f_p_value = f_p_value,
+    sigma = s$sigma,
+
+    fitted_values = fitted(model),
+    residuals = residuals(model),
+    actual_values = df[, 1],
+
+    vifs = vif_vals
+)
+res_list
     `;
 
     const result = await webR.evalR(rCode);
@@ -817,71 +883,56 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
     const pValues = getValue('p_values') || [];
     const vifs = getValue('vifs') || []; // Get VIFs
 
+    // Extract Chart Data
+    const fittedValues = getValue('fitted_values') || [];
+    const residuals = getValue('residuals') || [];
+    const actualValues = getValue('actual_values') || [];
+
     const coefficients = [];
     const len = coefNames.length;
+
+    // Find intercept
+    let interceptVal = 0;
+    const interceptIndex = coefNames.findIndex(n => n === '(Intercept)');
+    if (interceptIndex !== -1) {
+        interceptVal = estimates[interceptIndex];
+    }
+
     for (let i = 0; i < len; i++) {
+        // Skip adding Intercept to coefficients list if we want to separate it, 
+        // but typically we list all. VIF handling handles skip.
+        // Actually, let's keep all in list.
         coefficients.push({
             term: coefNames[i],
             estimate: estimates[i],
             stdError: stdErrors[i],
             tValue: tValues[i],
             pValue: pValues[i],
-            vif: (coefNames[i] !== '(Intercept)') ? (vifs[(i - 1)] || undefined) : undefined // Map VIF, skip intercept
+            vif: (coefNames[i] !== '(Intercept)') ? (vifs[(i - 1)] || undefined) : undefined
         });
-        // Note: coefNames[0] is often Intercept. VIFs match X variables only.
-        // We need to match VIF names to coef names if possible.
-        // R 'vifs' array corresponds to X columns order.
-        // coefNames includes Intercept at index 0 generally.
-        // So estimates[1] corresponds to vifs[0]... roughly.
-        // Better logic: use name matching if returned, but array order is usually consistent.
-        // Let's assume Intercept is first and VIFs correspond to subsequent terms.
-        if (i > 0 && vifs.length > 0) {
-            // Check if name matches (sanitized)
-            coefficients[i].vif = vifs[i - 1];
-        }
     }
 
-    const modelFit = {
-        rSquared: getValue('r_squared')?.[0] || 0,
-        adjRSquared: getValue('adj_r_squared')?.[0] || 0,
-        fStatistic: getValue('f_stat')?.[0] || 0,
-        df: getValue('df_num')?.[0] || 0,
-        dfResid: getValue('df_denom')?.[0] || 0,
-        pValue: getValue('f_p_value')?.[0] || 0,
-        residualStdError: getValue('sigma')?.[0] || 0
-    };
-
-    // Chart Data
-    const fittedValues = getValue('fitted_values') || [];
-    const residuals = getValue('residuals') || [];
-    const actualValues = getValue('actual_values') || [];
-
-    // Build Equation String
-    let equation = `${names[0]} = `;
-    const intercept = coefficients.find(c => c.term === '(Intercept)');
-    if (intercept) {
-        equation += `${intercept.estimate.toFixed(3)}`;
-    } else {
-        equation += `0`;
-    }
+    // Build Equation
+    let equationStr = `${interceptVal.toFixed(3)}`;
 
     for (const coef of coefficients) {
         if (coef.term === '(Intercept)') continue;
         const val = coef.estimate;
         const sign = val >= 0 ? ' + ' : ' - ';
         const cleanTerm = coef.term.replace(/`/g, '');
-        equation += `${sign}${Math.abs(val).toFixed(3)}*${cleanTerm}`;
+        equationStr += `${sign}${Math.abs(val).toFixed(3)}*${cleanTerm}`;
     }
 
     return {
         coefficients,
         modelFit,
-        equation,
+        equation: equationStr,
         chartData: {
             fitted: fittedValues,
             residuals: residuals,
             actual: actualValues
-        }
+        },
+        rCode: rCode
     };
 }
 
@@ -894,6 +945,7 @@ export async function runMannWhitneyU(data: number[][]): Promise<{
     pValue: number;
     method: string;
     groupStats: any;
+    rCode: string;
 }> {
     const webR = await initWebR();
     const rCode = `
@@ -935,7 +987,8 @@ export async function runMannWhitneyU(data: number[][]): Promise<{
         groupStats: {
             groups: getValue('groups') || [],
             medians: getValue('medians') || []
-        }
+        },
+        rCode: rCode
     };
 }
 
@@ -949,6 +1002,7 @@ export async function runChiSquare(data: number[][]): Promise<{
     pValue: number;
     observed: any;
     expected: any;
+    rCode: string;
 }> {
     const webR = await initWebR();
     const rCode = `
@@ -1020,7 +1074,8 @@ export async function runChiSquare(data: number[][]): Promise<{
             data: expected,
             rows: rowNames,
             cols: colNames
-        }
+        },
+        rCode: rCode
     };
 }
 
@@ -1050,6 +1105,7 @@ export async function runCFA(
         pvalue: number;
         se: number;
     }[];
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -1153,7 +1209,7 @@ export async function runCFA(
             });
         }
 
-        return { fitMeasures, estimates };
+        return { fitMeasures, estimates, rCode };
 
     } catch (e: any) {
         throw new Error("Lavaan Error: " + e.message);
@@ -1186,6 +1242,7 @@ export async function runSEM(
         pvalue: number;
         se: number;
     }[];
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -1276,7 +1333,7 @@ export async function runSEM(
             });
         }
 
-        return { fitMeasures, estimates };
+        return { fitMeasures, estimates, rCode };
 
     } catch (e: any) {
         throw new Error("Lavaan SEM Error: " + e.message);

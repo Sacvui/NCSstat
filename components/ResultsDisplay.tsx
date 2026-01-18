@@ -13,6 +13,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
+import { Code, Copy, Check } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { AIInterpretation } from './AIInterpretation';
 
@@ -28,38 +29,75 @@ ChartJS.register(
 );
 
 interface ResultsDisplayProps {
-    analysisType: string;
     results: any;
-    columns: string[];
-    // Workflow handlers
+    analysisType: string;
     onProceedToEFA?: (goodItems: string[]) => void;
     onProceedToCFA?: (factors: { name: string; indicators: string[] }[]) => void;
     onProceedToSEM?: (factors: { name: string; indicators: string[] }[]) => void;
 }
 
-export function ResultsDisplay({ analysisType, results, columns, onProceedToEFA, onProceedToCFA, onProceedToSEM }: ResultsDisplayProps) {
-    const display = (() => {
-        if (analysisType === 'cronbach') return <CronbachResults results={results} columns={columns} onProceedToEFA={onProceedToEFA} />;
-        if (analysisType === 'correlation') return <CorrelationResults results={results} columns={columns} />;
-        if (analysisType === 'descriptive') return <DescriptiveResults results={results} columns={columns} />;
-        if (analysisType === 'ttest') return <TTestResults results={results} columns={columns} />;
-        if (analysisType === 'ttest-paired') return <PairedTTestResults results={results} columns={columns} />;
-        if (analysisType === 'anova') return <ANOVAResults results={results} columns={columns} />;
-        if (analysisType === 'efa') return <EFAResults results={results} columns={columns} onProceedToCFA={onProceedToCFA} />;
-        if (analysisType === 'regression') return <RegressionResults results={results} columns={columns} />;
-        if (analysisType === 'chisq') return <ChiSquareResults results={results} />;
-        if (analysisType === 'mannwhitney') return <MannWhitneyResults results={results} />;
-        if (analysisType === 'cfa' || analysisType === 'sem') return <CFAResults results={results} onProceedToSEM={onProceedToSEM} />;
-        return null;
-    })();
+return (
+    <div className="space-y-8">
+        {display}
 
-    if (!display) return null;
+        {/* R Syntax Viewer */}
+        {results?.rCode && (
+            <RSyntaxViewer code={results.rCode} />
+        )}
+
+        <AIInterpretation analysisType={analysisType} results={results} />
+    </div>
+);
+}
+
+// R Syntax Viewer Component
+function RSyntaxViewer({ code }: { code: string }) {
+    const [copied, setCopied] = React.useState(false);
+    const [expanded, setExpanded] = React.useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
-        <div className="space-y-8">
-            {display}
-            <AIInterpretation analysisType={analysisType} results={results} />
-        </div>
+        <Card className="border-blue-200 bg-blue-50/50 print:hidden">
+            <div
+                className="cursor-pointer select-none"
+                onClick={() => setExpanded(!expanded)}
+            >
+                <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
+                    <div className="flex items-center gap-2">
+                        <Code className="h-4 w-4 text-blue-600" />
+                        <CardTitle className="text-sm font-medium text-blue-800">Equivalent R Syntax</CardTitle>
+                    </div>
+                    <div className="text-xs text-blue-500 font-normal hover:text-blue-700">
+                        {expanded ? 'Hide Code' : 'Show Code'}
+                    </div>
+                </CardHeader>
+            </div>
+            {expanded && (
+                <CardContent className="pt-0 pb-3 px-4">
+                    <div className="relative group">
+                        <pre className="bg-slate-900 text-slate-50 p-4 rounded-md text-xs font-mono overflow-x-auto whitespace-pre-wrap border border-slate-700 shadow-inner">
+                            {code}
+                        </pre>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+                            className="absolute top-2 right-2 p-1.5 bg-white/10 hover:bg-white/20 rounded-md transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                            title="Copy to clipboard"
+                        >
+                            {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3 text-white/70" />}
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-blue-600/70 mt-2 italic flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Run this code in R or RStudio to reproduce these exact results.
+                    </p>
+                </CardContent>
+            )}
+        </Card>
     );
 }
 
@@ -515,7 +553,7 @@ function DescriptiveResults({ results, columns }: { results: any; columns: strin
                 </CardContent>
             </Card>
 
-            {/* Workflow: Proceed to EFA */}
+            {/* Workflow: Proceed to EFA - MOVED/REMOVED (Misplaced in DescriptiveResults)
             {onProceedToEFA && goodItems.length >= 3 && (
                 <Card className="border-2 border-green-500 bg-green-50">
                     <CardContent className="p-6">
@@ -539,6 +577,7 @@ function DescriptiveResults({ results, columns }: { results: any; columns: strin
                     </CardContent>
                 </Card>
             )}
+            */}
         </div>
     );
 }
