@@ -80,20 +80,27 @@ export async function initWebR(maxRetries: number = 3): Promise<WebR> {
                 }
 
                 // Install required packages
-                updateProgress('Đang cài đặt packages (psych, lavaan)...');
-                try {
-                    await webR.installPackages(['psych', 'lavaan', 'corrplot', 'GPArotation']);
+                // We install them one by one to give better progress feedback
+                const packages = ['psych', 'lavaan', 'corrplot', 'GPArotation'];
 
-                    // Load packages in parallel for faster init
-                    updateProgress('Đang load packages...');
-                    await Promise.all([
-                        webR.evalR('library(psych)'),
-                        webR.evalR('library(lavaan)'),
-                        webR.evalR('library(GPArotation)')
-                    ]);
-                } catch (pkgError) {
-                    console.warn('Package installation failed, continuing anyway:', pkgError);
+                for (let i = 0; i < packages.length; i++) {
+                    const pkg = packages[i];
+                    updateProgress(`Đang tải thư viện: ${pkg} (${i + 1}/${packages.length})...`);
+                    console.log(`[WebR] Installing ${pkg}...`);
+                    try {
+                        await webR.installPackages([pkg]);
+                    } catch (e) {
+                        console.warn(`Failed to install ${pkg}`, e);
+                    }
                 }
+
+                // Load packages in parallel for faster init
+                updateProgress('Đang kích hoạt R environment...');
+                await Promise.all([
+                    webR.evalR('library(psych)'),
+                    webR.evalR('library(lavaan)'),
+                    webR.evalR('library(GPArotation)')
+                ]);
 
                 updateProgress('Sẵn sàng!');
                 webRInstance = webR;
@@ -144,6 +151,18 @@ export function parseWebRResult(jsResult: any) {
         if (item && item.values) return item.values;
         return item;
     };
+}
+
+/**
+ * Helper to parse flat array to matrix
+ */
+export function parseMatrix(val: any, dim: number): number[][] {
+    if (!val || !Array.isArray(val)) return [];
+    const matrix: number[][] = [];
+    for (let i = 0; i < dim; i++) {
+        matrix.push(val.slice(i * dim, (i + 1) * dim));
+    }
+    return matrix;
 }
 
 /**
@@ -232,7 +251,6 @@ export async function runCronbachAlpha(data: number[][]): Promise<{
         rawAlpha: rawAlpha,
         standardizedAlpha: stdAlpha,
         nItems: nItems,
-        nItems: nItems,
         itemTotalStats: itemTotalStats,
         rCode: rCode
     };
@@ -303,7 +321,6 @@ export async function runCorrelation(data: number[][]): Promise<{
     const numCols = getValue('n_cols')?.[0] || nCols;
 
     return {
-        correlationMatrix: parseMatrix(getValue('correlation'), numCols),
         correlationMatrix: parseMatrix(getValue('correlation'), numCols),
         pValues: parseMatrix(getValue('p_values'), numCols),
         rCode: rCode
@@ -461,6 +478,7 @@ export async function runTTestPaired(before: number[], after: number[]): Promise
     meanDiff: number;
     ci95Lower: number;
     ci95Upper: number;
+    rCode: string;
 }> {
     const webR = await initWebR();
 
@@ -687,7 +705,7 @@ export async function runLinearRegression(data: number[][], names: string[]): Pr
 
     // Sanitize names for R (remove spaces, special chars if needed) -> assume frontend handles or use simple mapping
     // But R lm() works best with clean names.
-    const cleanNames = names.map(n => n.replace(/[^\w\d_]/g, '.')); // basic sanitization
+    const cleanNames = names.map((n: string) => n.replace(/[^\w\d_]/g, '.')); // basic sanitization
     // Actually, R formula with backticks handles spaces fine.
 
     // Construct R command
@@ -811,14 +829,22 @@ res_list
     const residuals = getValue('residuals') || [];
     const actualValues = getValue('actual_values') || [];
 
+    const modelFit = {
+        rSquared: getValue('r_squared')?.[0] || 0,
+        adjRSquared: getValue('adj_r_squared')?.[0] || 0,
+        fStatistic: getValue('f_stat')?.[0] || 0,
+        df: getValue('df_num')?.[0] || 0,
+        dfResid: getValue('df_denom')?.[0] || 0,
+        pValue: getValue('f_p_value')?.[0] || 0,
+        residualStdError: getValue('sigma')?.[0] || 0
+    };
+
+    const interceptVal = estimates[0] || 0; // Assuming first is intercept
     const coefficients = [];
     const len = coefNames.length;
-
-    // Find intercept
-    let interceptVal = 0;
-    const interceptIndex = coefNames.findIndex(n => n === '(Intercept)');
+    const interceptIndex = coefNames.findIndex((n: string) => n === '(Intercept)');
     if (interceptIndex !== -1) {
-        interceptVal = estimates[interceptIndex];
+        // interceptVal = estimates[interceptIndex]; // Already likely at 0, but good to check
     }
 
     for (let i = 0; i < len; i++) {

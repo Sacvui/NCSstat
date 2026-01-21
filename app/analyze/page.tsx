@@ -100,13 +100,20 @@ export default function AnalyzePage() {
         const status = getWebRStatus();
         if (!status.isReady && !status.isLoading) {
             console.log('[WebR] Starting auto-initialization...');
+
+            // Subscribe to progress updates
+            setProgressCallback((msg) => {
+                setToast({ message: msg, type: 'info' });
+            });
+
             initWebR()
                 .then(() => {
                     console.log('[WebR] Auto-initialization successful');
+                    setToast({ message: 'R Engine đã sẵn sàng!', type: 'success' });
                 })
                 .catch(err => {
                     console.error('[WebR] Auto-initialization failed:', err);
-                    // Don't show toast on initial fail - will retry when needed
+                    setToast({ message: 'Lỗi khởi tạo R Engine. Vui lòng tải lại trang.', type: 'error' });
                 });
         }
     }, []); // Run once on mount
@@ -1270,6 +1277,22 @@ export default function AnalyzePage() {
                         NCSKit.org
                     </a>
                 </p>
+                <div className="mt-4">
+                    <button
+                        onClick={() => {
+                            const data = FeedbackService.exportAllData();
+                            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `ncsStat_feedback_${new Date().toISOString().slice(0, 10)}.json`;
+                            a.click();
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                        Export Feedback Data (Dev)
+                    </button>
+                </div>
             </footer>
 
             {/* Custom styles for animations */}
